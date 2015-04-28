@@ -1,0 +1,40 @@
+{
+            "_id": "28",
+            "createdBy": "someone",
+            "hostname": ".redhat.com",
+            "lastUpdateDate": "20150401T16:36:11.111+0000",
+            "lastUpdatedBy": "someone",
+            "objectType": "terms",
+            "optionalFlag": true,
+            "productAttribute": "",
+            "siteCode": "REDHAT",
+            "statusCode": "active",
+            "termsCategoryCode": "customer",
+            "termsTypeCode": "indemnification",
+            "termsVerbiage": [
+                {
+                    "name": "default",
+                    "statusCode": "active",
+                    "termsVerbiageTranslation": [
+                        {
+                            "statusCode": "active",
+                            "termsAcknowledgements": [
+                                {
+                                    "_id": "1000",
+                                    "userId": "1"
+                                },
+                                {
+                                    "_id": "1001",
+                                    "userId": "2"
+                                }
+                            ],
+                            "termsAcknowledgements#": 2,
+                            "uid": "1520"
+                        }
+                    ],
+                    "termsVerbiageTranslation#": 1,
+                    "uid": "5af45199-4e4b-4b48-a141-4cda97967aba"
+                }
+            ],
+            "termsVerbiage#": 1
+}

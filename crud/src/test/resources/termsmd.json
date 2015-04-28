@@ -170,6 +170,16 @@
                                     },
                                     "version": {
                                         "type": "integer"
+                                    },
+                                    "termsAcknowledgements": {
+                                        "type":"array",
+                                        "items" : {
+                                           "type":"object",
+                                           "fields": {
+                                             "_id": { "type":"string" },
+                                             "userId" : { "type":"string" }
+                                           }
+                                        }
                                     }
                                 }
                             }
