@@ -18,6 +18,8 @@
  */
 package com.redhat.lightblue.config;
 
+import com.redhat.lightblue.metadata.parser.DataStoreParser;
+
 public interface BackendDescriptor {
     /**
      * Returns the name of the backend

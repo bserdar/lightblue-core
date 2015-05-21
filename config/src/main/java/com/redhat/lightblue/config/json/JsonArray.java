@@ -24,6 +24,9 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.redhat.lightblue.config.ConfigPropertyList;
 import com.redhat.lightblue.config.ConfigItem;
 
+/**
+ * A configuration property list based on a Json array node
+ */
 public class JsonArray implements ConfigPropertyList {
 
     private final ArrayNode node;

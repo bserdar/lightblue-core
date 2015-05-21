@@ -18,6 +18,11 @@
  */
 package com.redhat.lightblue.config;
 
+/**
+ * A random access property list. Each property is accessed using the
+ * property index. It contains a list of ConfigItems, each item can be
+ * a ConfigValue, ConfigPropertyList, or ConfigPropertyMap.
+ */
 public interface ConfigPropertyList extends ConfigItem {
 
     /**

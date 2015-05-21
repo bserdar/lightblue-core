@@ -57,6 +57,21 @@ import com.redhat.lightblue.util.JsonUtils;
 /**
  * Manager class that creates instances of Mediator, Factory, Metadata, etc.
  * based on configuration.
+ *
+ * The configuration is of the following form:
+ * 
+ * validateMetadataRequests (boolean)
+ * validateCrudRequests (boolean)
+ *
+ * datasources (Object)
+ *    datasourceName (Object) : Name of the datasource
+ *      backend (String): Name of the backend that manages this datasource
+ * metadata (Object)
+ *    backend (String): Name of the backend used to store metadata
+ * backends (Object)
+ *   backendName (Object) : Name of the backend
+ *     type (String): Class name for the backend descriptor (extends BackendDescriptor)
+ * 
  */
 public final class LightblueFactory implements Serializable {
 

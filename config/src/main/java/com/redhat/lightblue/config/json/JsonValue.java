@@ -25,6 +25,9 @@ import com.fasterxml.jackson.databind.node.NullNode;
 
 import com.redhat.lightblue.config.ConfigPropertyList;
 
+/**
+ * A configuration value based on a Json document value
+ */
 public class JsonValue implements ConfigValue {
 
     private final JsonNode value;

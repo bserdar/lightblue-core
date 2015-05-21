@@ -18,6 +18,11 @@
  */
 package com.redhat.lightblue.config;
 
+/**
+ * A property map. Each property is accessed using the property
+ * name. Each property can be a ConfigValue, ConfigPropertyMap, or
+ * ConfigPropertyList.
+ */
 public interface ConfigPropertyMap extends ConfigItem {
 
     /**
