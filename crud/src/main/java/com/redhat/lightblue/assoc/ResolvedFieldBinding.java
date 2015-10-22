@@ -179,7 +179,9 @@ public class ResolvedFieldBinding implements Serializable {
             // reference field, this is no longer an elemMatch query. We return the
             // nested query instead.
             LOGGER.debug("Rewriting {}",q);
+            
             Path arrayName=context.isEmpty()?q.getArray():new Path(context,q.getArray());
+
             // Find a field with the array name as the prefix
             ResolvedFieldInfo arrayDescendant=null;
             for(ResolvedFieldInfo rfi:conjunct.getFieldInfo()) {

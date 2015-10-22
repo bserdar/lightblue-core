@@ -92,7 +92,6 @@ public class Conjunct implements Serializable {
             fieldInfo[index++]=rfi;
             referredNodes.add(rfi.getFieldQueryPlanNode());
         }
-        
     }
 
     /**
@@ -119,7 +118,6 @@ public class Conjunct implements Serializable {
     public Set<QueryPlanNode> getReferredNodes() {
         return referredNodes;
     }
-
 
     /**
      * Returns the field information about the fields in the conjunct

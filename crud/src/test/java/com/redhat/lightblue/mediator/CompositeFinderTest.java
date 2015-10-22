@@ -479,4 +479,15 @@ public class CompositeFinderTest extends AbstractJsonSchemaTest {
         Assert.assertNotNull(updateQuery);
         Assert.assertTrue(updateQuery instanceof ValueComparisonExpression);
     }
+    
+    public void reverse_q_w_arr() throws Exception {
+        FindRequest fr=new FindRequest();
+        fr.setQuery(query("{'array':'us.*.authentications','elemMatch':{ '$and':[ { 'field':'principal','op':'=','rvalue':'a'}, {'field':'providerName','op':'$eq','rvalue':'p'} ] } }"));
+        fr.setProjection(projection("[{'field':'*','recursive':1},{'field':'us.*' }]"));
+        fr.setEntityVersion(new EntityVersion("L","0.0.1"));
+        
+        Response response=mediator.find(fr);
+        Assert.assertEquals(1,response.getEntityData().size());
+        Assert.assertEquals("1",JsonDoc.get(response.getEntityData().get(0),new Path("us.0._id")).asText());
+    }
 }

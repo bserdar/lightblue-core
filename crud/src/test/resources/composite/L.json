@@ -42,6 +42,17 @@
             },
             "name": {
                 "type": "string"
+            },
+            "uid":{"type":"integer"},
+            "us":{
+                "type":"reference",
+                "entity":"U",
+                "versionValue":"0.0.1",
+                "query":{
+                    "$and":[
+                        { "field":"_id","op":"=","rfield":"$parent.uid"}
+                    ]
+                }
             }
         }
     }
