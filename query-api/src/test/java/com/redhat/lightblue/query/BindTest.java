@@ -45,6 +45,16 @@ public class BindTest {
     }
 
     @Test
+    public void arrbindableFieldsTest() throws Exception {
+        QueryExpression q = getq("{'array':'a','elemMatch':{'field':'x','op':'>','rfield':'y'}}");
+        List<QueryInContext> l=q.getBindableClauses();
+        Assert.assertEquals(1,l.size());
+        QueryInContext qc=l.get(0);
+        Assert.assertEquals(1,qc.getNestedExpressions().length);
+        Assert.assertTrue(q==qc.getNestedExpressions()[0]);
+    }
+    
+    @Test
     public void bindableFieldsTest() throws Exception {
         QueryExpression q = getq("{'field':'x','op':'=','rfield':'y'}");
         List<QueryInContext> l = q.getBindableClauses();

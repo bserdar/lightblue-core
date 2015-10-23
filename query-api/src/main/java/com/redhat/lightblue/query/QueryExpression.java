@@ -40,6 +40,7 @@ public abstract class QueryExpression extends JsonObject {
 
     private static final class BindableClausesItr extends QueryIterator {
         private List<QueryInContext> list;
+        private List<QueryExpression> stack=new ArrayList<>(8);
 
         public BindableClausesItr(List<QueryInContext> l) {
             this.list = l;
@@ -47,13 +48,21 @@ public abstract class QueryExpression extends JsonObject {
 
         @Override
         protected QueryExpression itrFieldComparisonExpression(FieldComparisonExpression q, Path ctx) {
-            list.add(new QueryInContext(ctx, q));
+            list.add(new QueryInContext(ctx, q, stack.toArray(new QueryExpression[stack.size()])));
             return q;
         }
         @Override
         protected QueryExpression itrNaryFieldRelationalExpression(NaryFieldRelationalExpression q, Path ctx) {
-            list.add(new QueryInContext(ctx,q));
+            list.add(new QueryInContext(ctx,q,stack.toArray(new QueryExpression[stack.size()])));
             return q;
+        }
+
+        @Override
+        protected QueryExpression itrArrayMatchExpression(ArrayMatchExpression q,Path ctx) {
+            stack.add(q);
+            QueryExpression x=super.itrArrayMatchExpression(q,ctx);
+            stack.remove(stack.size()-1);
+            return x;
         }
     }
 

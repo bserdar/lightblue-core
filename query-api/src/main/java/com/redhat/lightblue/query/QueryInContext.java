@@ -32,13 +32,15 @@ public class QueryInContext implements Serializable {
 
     private final Path context;
     private final QueryExpression query;
+    private final QueryExpression nestedExpressions[];
 
     /**
      * Ctor
      */
-    public QueryInContext(Path context, QueryExpression query) {
+    public QueryInContext(Path context, QueryExpression query,QueryExpression[] nested) {
         this.context = context;
         this.query = query;
+        this.nestedExpressions=nested;
     }
 
     /**
@@ -46,6 +48,16 @@ public class QueryInContext implements Serializable {
      */
     public Path getContext() {
         return context;
+    }
+
+    /**
+     * If the query is in an array expression, this contains the array
+     * of nested array expressions collected from the root of the
+     * query all the way to the query clause. If the query is not in an array
+     * expression, this will be an empty array.
+     */
+    public QueryExpression[] getNestedExpressions() {
+        return nestedExpressions;
     }
 
     /**
