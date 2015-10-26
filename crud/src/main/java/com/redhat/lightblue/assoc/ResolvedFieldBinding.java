@@ -37,8 +37,7 @@ import com.redhat.lightblue.query.ValueBinding;
 import com.redhat.lightblue.query.ListBinding;
 import com.redhat.lightblue.query.QueryInContext;
 import com.redhat.lightblue.query.QueryExpression;
-import com.redhat.lightblue.query.FieldComparisonExpression;
-import com.redhat.lightblue.query.NaryFieldRelationalExpression;
+import com.redhat.lightblue.query.FieldRelationalExpression;
 import com.redhat.lightblue.query.RelativeRewriteIterator;
 import com.redhat.lightblue.query.NaryLogicalExpression;
 import com.redhat.lightblue.query.NaryLogicalOperator;
@@ -282,19 +281,14 @@ public class ResolvedFieldBinding implements Serializable {
                     LOGGER.debug("Building bind request");
                     Set<Path> bindRequest=new HashSet<>();
                     for(QueryInContext qic:bindable) {
-                        if(qic.getQuery() instanceof FieldComparisonExpression) {
-                            FieldComparisonExpression fce=(FieldComparisonExpression)qic.getQuery();
-                            Path lfield=new Path(qic.getContext(),fce.getField());
-                            Path rfield=new Path(qic.getContext(),fce.getRfield());
-                            ResolvedFieldInfo f=getFieldToBind(lfield,rfield,conjunct,atNode);
+                        //if(qic.getNestedExpressions().length>0) {
+                            // This is a query within an array match expression
+                        //} else
+                        if(qic.getQuery() instanceof FieldRelationalExpression) {
+                            FieldRelationalExpression fce=(FieldRelationalExpression)qic.getQuery();
+                            ResolvedFieldInfo f=getFieldToBind(qic.getContext(),fce.getField(),fce.getRfield(),conjunct,atNode);
                             bindRequest.add(f.getOriginalFieldName());
-                        } else if(qic.getQuery() instanceof NaryFieldRelationalExpression) {
-                            NaryFieldRelationalExpression nfr=(NaryFieldRelationalExpression)qic.getQuery();
-                            Path lfield=new Path(qic.getContext(),nfr.getField());
-                            Path rfield=new Path(qic.getContext(),nfr.getRfield());
-                            ResolvedFieldInfo f=getFieldToBind(lfield,rfield,conjunct,atNode);
-                            bindRequest.add(f.getOriginalFieldName());
-                        }
+                        } 
                     }
 
                     LOGGER.debug("Bind fields:{}",bindRequest);
@@ -326,6 +320,18 @@ public class ResolvedFieldBinding implements Serializable {
         }
 
         return ret;
+    }
+
+    private static ResolvedFieldInfo getFieldToBind(Path context,Path rfield,Path lfield,Conjunct clause,QueryPlanNode atNode) {
+        Path l,r;
+        if(context.isEmpty()) {
+            l=lfield;
+            r=rfield;
+        } else {
+            l=new Path(context,lfield);
+            r=new Path(context,rfield);
+        }
+        return getFieldToBind(l,r,clause,atNode);
     }
 
     /**
