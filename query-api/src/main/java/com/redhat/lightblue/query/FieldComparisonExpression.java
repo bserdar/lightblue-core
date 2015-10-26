@@ -29,7 +29,7 @@ import com.redhat.lightblue.util.Path;
  *                                 rfield: <field> }
  * </pre>
  */
-public class FieldComparisonExpression extends BinaryRelationalExpression {
+public class FieldComparisonExpression extends BinaryRelationalExpression implements FieldRelationalExpression {
 
     private static final long serialVersionUID = 1L;
 

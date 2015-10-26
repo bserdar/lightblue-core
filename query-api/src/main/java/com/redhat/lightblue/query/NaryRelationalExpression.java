@@ -36,7 +36,7 @@ import com.redhat.lightblue.util.Path;
  *                                 rfield: array_field }
  * </pre>
  */
-public abstract class NaryRelationalExpression extends RelationalExpression {
+public abstract class NaryRelationalExpression extends RelationalExpression  {
 
     private final Path field;
     private final NaryRelationalOperator op;
