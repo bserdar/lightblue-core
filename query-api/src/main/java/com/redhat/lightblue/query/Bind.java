@@ -26,8 +26,12 @@ import com.redhat.lightblue.util.Path;
 import com.redhat.lightblue.util.Error;
 
 public class Bind extends QueryIterator {
-    private List<FieldBinding> bindingResult;
-    private Set<Path> bindRequest;
+
+    private static int BIND_LEFT=0x01;
+    private static int BIND_RIGHT=0x02;
+    
+    protected List<FieldBinding> bindingResult;
+    protected Set<Path> bindRequest;
     
     public Bind(List<FieldBinding> bindingResult,
                 Set<Path> bindRequest) {
@@ -75,20 +79,21 @@ public class Bind extends QueryIterator {
      */
     @Override
     protected QueryExpression itrNaryFieldRelationalExpression(NaryFieldRelationalExpression q, Path ctx) {
+        return rewrite(q,ctx,bindRequest,bindingResult);
+    }
+
+    private static QueryExpression rewrite(NaryFieldRelationalExpression q, Path ctx, Set<Path> bindRequest,List<FieldBinding> bindingResult) {
         QueryExpression newq=q;
-        Path l = new Path(ctx, q.getField());
-        Path r = new Path(ctx, q.getRfield());
-        boolean bindl = bindRequest.contains(l);
-        boolean bindr = bindRequest.contains(r);
-        if (bindl && bindr) {
+        int blr=getBindLeftRight(q,ctx,bindRequest);
+        if (blr==(BIND_LEFT|BIND_RIGHT)) {
             throw Error.get(QueryConstants.ERR_INVALID_VALUE_BINDING, q.toString());
         }
-        if (bindl || bindr) {
+        if (blr!=0) {
             // If we're here, only one of the fields is bound
-            if (bindr) {    
+            if ((blr&BIND_RIGHT)!=0) {    
                 BoundValueList newValue = new BoundValueList();
                 newq = new NaryValueRelationalExpression(q.getField(), q.getOp(), newValue);
-                bindingResult.add(new ListBinding(r, newValue, q, newq));
+                bindingResult.add(new ListBinding(new Path(ctx,q.getRfield()), newValue, q, newq));
             } else {
                 BoundValue newValue=new BoundValue();
                 List<Value> list=new ArrayList<>(1);
@@ -96,7 +101,7 @@ public class Bind extends QueryIterator {
                 newq = new ArrayContainsExpression(q.getRfield(), q.getOp()==NaryRelationalOperator._in?
                                                    ContainsOperator._all:ContainsOperator._none, 
                                                    list);
-                bindingResult.add(new ValueBinding(l, newValue, q, newq));
+                bindingResult.add(new ValueBinding(new Path(ctx,q.getField()), newValue, q, newq));
             }                
         }
         return newq; 
@@ -115,33 +120,201 @@ public class Bind extends QueryIterator {
      */
     @Override
     protected QueryExpression itrFieldComparisonExpression(FieldComparisonExpression q, Path ctx) {
+        return rewrite(q,ctx,bindRequest,bindingResult);
+    }
+
+    private static QueryExpression rewrite(FieldComparisonExpression q, Path ctx,Set<Path> bindRequest,List<FieldBinding> bindingResult) {
         QueryExpression newq=q;
-        Path l = new Path(ctx, q.getField());
-        Path r = new Path(ctx, q.getRfield());
-        boolean bindl = bindRequest.contains(l);
-        boolean bindr = bindRequest.contains(r);
-        if (bindl && bindr) {
+        int blr=getBindLeftRight(q,ctx,bindRequest);
+        if (blr==(BIND_LEFT|BIND_RIGHT)) {
             throw Error.get(QueryConstants.ERR_INVALID_VALUE_BINDING, q.toString());
         }
-        if (bindl || bindr) {
+        if (blr!=0) {
             // If we're here, only one of the fields is bound
             BoundValue newValue = new BoundValue();
-            if (bindr) {
+            if ((blr&BIND_RIGHT)!=0) {
                 newq = new ValueComparisonExpression(q.getField(), q.getOp(), newValue);
-                bindingResult.add(new ValueBinding(r, newValue, q, newq));
+                bindingResult.add(new ValueBinding(new Path(ctx,q.getRfield()), newValue, q, newq));
             } else {
                 newq = new ValueComparisonExpression(q.getRfield(), q.getOp().invert(), newValue);
-                bindingResult.add(new ValueBinding(l, newValue, q, newq));
+                bindingResult.add(new ValueBinding(new Path(ctx,q.getField()), newValue, q, newq));
             }
         }
         return newq;
     }
 
+    private static int getBindLeftRight(FieldRelationalExpression expr, Path ctx,Set<Path> bindRequest) {
+        Path l = new Path(ctx, expr.getField());
+        Path r = new Path(ctx, expr.getRfield());
+        boolean bindl = bindRequest.contains(l);
+        boolean bindr = bindRequest.contains(r);
+        return (bindl?BIND_LEFT:0) | (bindr?BIND_RIGHT:0);
+    }
+
+    /**
+     * Binding an array match expression may require changes to the query structure.
+     * <pre>
+     *  { array: A, elemMatch: { field: X, rfield: Y} }
+     *
+     *  Bind A.*.X:
+     *     A.*.X is under A, A.*.Y not under A: then { field:Y, rvalue: <bound value> } (type 1)
+     *     A.*.X is under A, A.*.Y under A: then: invalid
+     *     A.*.X is not under A, A.*.Y not under A: invalid
+     *     A.*.X is not under A, A.*.Y under A: then { array: A, elemMatch: { field: Y, rvalue: <bound value> } } (type 2)
+     * Bind A.*.Y:
+     *     A.*.X is under A, A.*.Y not under A: then { array: A, elemMatch: { field:X, rvalue: <bound value> }
+     *     A.*.X is under A, A.*.Y under A: then: invalid
+     *     A.*.X is not under A, A.*.Y not under A: invalid
+     *     A.*.X is not under A, A.*.Y under A: then : { field: X, rvalue: <bound value> } }
+     *
+     * If the expression is not a trivial expression:
+     * { array: A, elemMatch: { $and: [ X, Y, ..] } }
+     *   - If all bindings X, Y are of the same type, apply the conversion, otherwise invalid
+     *  All bindings being of the same type means: all clauses are either not bound, or they are of type 1 or 2
+     *   
+     * </pre>
+     *
+     * TODO: This is not how it ought to be done. During query planning, we should prepare all bindable queries, and associate
+     * them to nodes/edges.
+     */
     @Override
     protected QueryExpression itrArrayMatchExpression(ArrayMatchExpression q, Path ctx) {
         checkError(q, q.getArray(), ctx);
-        return super.itrArrayMatchExpression(q, ctx);
+        NestedBindIterator nbi=new NestedBindIterator(bindingResult,bindRequest);
+        QueryExpression newq=nbi.iterate(q.getElemMatch(),new Path(new Path(ctx,q.getArray()),Path.ANYPATH));
+        if(nbi.removeArray!=null&&nbi.removeArray) {
+            return newq;
+        } else {
+            if(newq == q.getElemMatch())
+                return q;
+            else
+                return new ArrayMatchExpression(q.getArray(),newq);
+        }
     }
 
+
+    private static class NestedBindIterator extends Bind {
+
+        public Boolean removeArray=null;
+
+        public NestedBindIterator(List<FieldBinding> bindingResult,
+                                  Set<Path> bindRequest) {
+            super(bindingResult,bindRequest);
+        }
+        
+        @Override
+        protected QueryExpression itrNaryFieldRelationalExpression(NaryFieldRelationalExpression q, Path ctx) {
+            QueryExpression newq=q;
+            int blr=getBindLeftRight(q,ctx,bindRequest);
+            if (blr==(BIND_LEFT|BIND_RIGHT)) {
+                throw Error.get(QueryConstants.ERR_INVALID_VALUE_BINDING, q.toString());
+            } else if(blr==0) {
+                return q;
+            } else {
+                int ctxLength=ctx.numSegments();
+                // Only one field is bound
+                Path l=new Path(ctx,q.getField()).normalize();
+                boolean lUnderCtx=l.numSegments()>ctxLength && l.prefix(ctxLength).equals(ctx);
+                Path r=new Path(ctx,q.getRfield()).normalize();
+                boolean rUnderCtx=r.numSegments()>ctxLength && r.prefix(ctxLength).equals(ctx);
+                if(!lUnderCtx&&!rUnderCtx ) {
+                    throw Error.get(QueryConstants.ERR_INVALID_VALUE_BINDING,q.toString());
+                }
+                    
+                if( (blr&BIND_LEFT)!=0 ) {
+                    if(lUnderCtx) {
+                        if(removeArray==null)
+                            removeArray=true;
+                        else if(!removeArray)
+                            throw Error.get(QueryConstants.ERR_INVALID_VALUE_BINDING,q.toString());
+                    } else { // !lUnderCtx
+                        if(removeArray==null)
+                            removeArray=false;
+                        else if(removeArray)
+                            throw Error.get(QueryConstants.ERR_INVALID_VALUE_BINDING,q.toString());
+                        
+                    }
+                    BoundValue newValue=new BoundValue();
+                    List<Value> list=new ArrayList<>(1);
+                    list.add(newValue);
+                    newq = new ArrayContainsExpression(q.getRfield(), q.getOp()==NaryRelationalOperator._in?
+                                                       ContainsOperator._all:ContainsOperator._none, 
+                                                       list);
+                    bindingResult.add(new ValueBinding(l, newValue, q, newq));
+                } else {
+                    // Binding rfield
+                    if(rUnderCtx) {
+                        if(removeArray==null)
+                            removeArray=true;
+                        else if(!removeArray)
+                            throw Error.get(QueryConstants.ERR_INVALID_VALUE_BINDING,q.toString());
+                    } else {
+                        if(removeArray==null)
+                            removeArray=false;
+                        else if(removeArray)
+                            throw Error.get(QueryConstants.ERR_INVALID_VALUE_BINDING,q.toString());
+                    }
+                    BoundValueList newValue = new BoundValueList();
+                    newq = new NaryValueRelationalExpression(q.getField(), q.getOp(), newValue);
+                    bindingResult.add(new ListBinding(r, newValue, q, newq));
+                }
+            }
+            return newq;            
+        }
+        
+        @Override
+        protected QueryExpression itrFieldComparisonExpression(FieldComparisonExpression q, Path ctx) {
+            QueryExpression newq=q;
+            int blr=getBindLeftRight(q,ctx,bindRequest);
+            if (blr==(BIND_LEFT|BIND_RIGHT)) {
+                throw Error.get(QueryConstants.ERR_INVALID_VALUE_BINDING, q.toString());
+            } else if(blr==0) {
+                return q;
+            } else {
+                int ctxLength=ctx.numSegments();
+                // Only one field is bound
+                Path l=new Path(ctx,q.getField()).normalize();
+                boolean lUnderCtx=l.numSegments()>ctxLength && l.prefix(ctxLength).equals(ctx);
+                Path r=new Path(ctx,q.getRfield()).normalize();
+                boolean rUnderCtx=r.numSegments()>ctxLength && r.prefix(ctxLength).equals(ctx);
+                if(!lUnderCtx&&!rUnderCtx ) {
+                    throw Error.get(QueryConstants.ERR_INVALID_VALUE_BINDING,q.toString());
+                }
+                BoundValue newValue = new BoundValue();
+                if( (blr&BIND_LEFT)!=0 ) {
+                    if(lUnderCtx) {
+                        if(removeArray==null)
+                            removeArray=true;
+                        else if(!removeArray)
+                            throw Error.get(QueryConstants.ERR_INVALID_VALUE_BINDING,q.toString());
+                    } else { // !lUnderCtx
+                        if(removeArray==null)
+                            removeArray=false;
+                        else if(removeArray)
+                            throw Error.get(QueryConstants.ERR_INVALID_VALUE_BINDING,q.toString());
+                        
+                    }
+                    newq = new ValueComparisonExpression(q.getRfield(), q.getOp().invert(), newValue);
+                    bindingResult.add(new ValueBinding(new Path(ctx,q.getField()), newValue, q, newq));
+                } else {
+                    // Binding rfield
+                    if(rUnderCtx) {
+                        if(removeArray==null)
+                            removeArray=true;
+                        else if(!removeArray)
+                            throw Error.get(QueryConstants.ERR_INVALID_VALUE_BINDING,q.toString());
+                    } else {
+                        if(removeArray==null)
+                            removeArray=false;
+                        else if(removeArray)
+                            throw Error.get(QueryConstants.ERR_INVALID_VALUE_BINDING,q.toString());
+                   }
+                    newq = new ValueComparisonExpression(q.getField(), q.getOp(), newValue);
+                    bindingResult.add(new ValueBinding(new Path(ctx,q.getRfield()), newValue, q, newq));
+                }
+            }
+            return newq;
+        }
+    }
     
 }

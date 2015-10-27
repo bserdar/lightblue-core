@@ -198,21 +198,19 @@ public class BindTest {
         List<FieldBinding> bindingInfo = new ArrayList<>();
         paths.add(new Path("a.*.x"));
         ArrayMatchExpression q = (ArrayMatchExpression) getq("{'array':'a','elemMatch':{'field':'x','op':'=','rfield':'y'}}");
-        ArrayMatchExpression newq = (ArrayMatchExpression) q.bind(bindingInfo, paths);
+        ValueComparisonExpression newq = (ValueComparisonExpression) q.bind(bindingInfo, paths);
 
-        Assert.assertTrue(q != newq);
-        Assert.assertTrue(newq.getElemMatch() instanceof ValueComparisonExpression);
-        Assert.assertEquals("y", ((ValueComparisonExpression) newq.getElemMatch()).getField().toString());
-        Assert.assertEquals(BinaryComparisonOperator._eq, ((ValueComparisonExpression) newq.getElemMatch()).getOp());
+        Assert.assertEquals("y",newq.getField().toString());
+        Assert.assertEquals(BinaryComparisonOperator._eq, newq.getOp());
         Assert.assertEquals(1, bindingInfo.size());
-        Assert.assertTrue(((ValueBinding)bindingInfo.get(0)).getValue() == ((ValueComparisonExpression) newq.getElemMatch()).getRvalue());
+        Assert.assertTrue(((ValueBinding)bindingInfo.get(0)).getValue() ==  newq.getRvalue());
         Assert.assertTrue(bindingInfo.get(0).getOriginalQuery() == q.getElemMatch());
-        Assert.assertTrue(bindingInfo.get(0).getBoundQuery() == newq.getElemMatch());
+        Assert.assertTrue(bindingInfo.get(0).getBoundQuery() == newq);
         Assert.assertEquals("a.*.x", bindingInfo.get(0).getField().toString());
 
         String newValue = "blah";
         ((ValueBinding)bindingInfo.get(0)).getValue().setValue(newValue);
-        Assert.assertEquals(newValue, ((ValueComparisonExpression) newq.getElemMatch()).getRvalue().getValue());
+        Assert.assertEquals(newValue, newq.getRvalue().getValue());
     }
 
     @Test
@@ -222,9 +220,9 @@ public class BindTest {
         paths.add(new Path("a.*.x"));
 
         ArrayMatchExpression q = (ArrayMatchExpression) getq("{'array':'a','elemMatch':{'field':'x','op':'>','rfield':'y'}}");
-        ArrayMatchExpression newq = (ArrayMatchExpression) q.bind(bindingInfo, paths);
-        Assert.assertEquals("y", ((ValueComparisonExpression) newq.getElemMatch()).getField().toString());
-        Assert.assertEquals(BinaryComparisonOperator._lt, ((ValueComparisonExpression) newq.getElemMatch()).getOp());
+        ValueComparisonExpression newq = (ValueComparisonExpression) q.bind(bindingInfo, paths);
+        Assert.assertEquals("y", newq.getField().toString());
+        Assert.assertEquals(BinaryComparisonOperator._lt, newq.getOp());
 
     }
 
@@ -235,9 +233,9 @@ public class BindTest {
         paths.add(new Path("a.*.x"));
 
         ArrayMatchExpression q = (ArrayMatchExpression) getq("{'array':'a','elemMatch':{'field':'x','op':'>=','rfield':'y'}}");
-        ArrayMatchExpression newq = (ArrayMatchExpression) q.bind(bindingInfo, paths);
-        Assert.assertEquals("y", ((ValueComparisonExpression) newq.getElemMatch()).getField().toString());
-        Assert.assertEquals(BinaryComparisonOperator._lte, ((ValueComparisonExpression) newq.getElemMatch()).getOp());
+        ValueComparisonExpression newq = (ValueComparisonExpression) q.bind(bindingInfo, paths);
+        Assert.assertEquals("y", newq.getField().toString());
+        Assert.assertEquals(BinaryComparisonOperator._lte, newq.getOp());
 
     }
 
@@ -248,9 +246,9 @@ public class BindTest {
         paths.add(new Path("a.*.x"));
 
         ArrayMatchExpression q = (ArrayMatchExpression) getq("{'array':'a','elemMatch':{'field':'x','op':'<','rfield':'y'}}");
-        ArrayMatchExpression newq = (ArrayMatchExpression) q.bind(bindingInfo, paths);
-        Assert.assertEquals("y", ((ValueComparisonExpression) newq.getElemMatch()).getField().toString());
-        Assert.assertEquals(BinaryComparisonOperator._gt, ((ValueComparisonExpression) newq.getElemMatch()).getOp());
+        ValueComparisonExpression newq = (ValueComparisonExpression) q.bind(bindingInfo, paths);
+        Assert.assertEquals("y", newq.getField().toString());
+        Assert.assertEquals(BinaryComparisonOperator._gt, newq.getOp());
 
     }
 
@@ -261,8 +259,8 @@ public class BindTest {
         paths.add(new Path("a.*.x"));
 
         ArrayMatchExpression q = (ArrayMatchExpression) getq("{'array':'a','elemMatch':{'field':'x','op':'<=','rfield':'y'}}");
-        ArrayMatchExpression newq = (ArrayMatchExpression) q.bind(bindingInfo, paths);
-        Assert.assertEquals("y", ((ValueComparisonExpression) newq.getElemMatch()).getField().toString());
-        Assert.assertEquals(BinaryComparisonOperator._gte, ((ValueComparisonExpression) newq.getElemMatch()).getOp());
+        ValueComparisonExpression newq = (ValueComparisonExpression) q.bind(bindingInfo, paths);
+        Assert.assertEquals("y", newq.getField().toString());
+        Assert.assertEquals(BinaryComparisonOperator._gte, newq.getOp());
     }
 }
