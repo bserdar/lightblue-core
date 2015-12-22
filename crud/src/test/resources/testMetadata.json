@@ -29,6 +29,20 @@
                 "update":["nobody"]
             }
         },
+        "arrayWithUnmodifiableField" : {
+            "type":"array",
+            "items": {
+                "type":"object",
+                "fields": {
+                    "theField": {
+                        "type":"string",
+                        "access": {
+                            "update":["noone"]
+                        }
+                    }
+                }
+            }
+        },
       "field1": {
         "type": "string",
         "access" : {

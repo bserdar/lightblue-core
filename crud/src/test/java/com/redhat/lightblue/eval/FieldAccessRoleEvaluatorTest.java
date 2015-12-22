@@ -49,4 +49,21 @@ public class FieldAccessRoleEvaluatorTest extends AbstractJsonNodeTest {
         List<Path> list=eval.getInaccessibleFields_Update(newDoc,oldDoc);
         Assert.assertEquals(0,list.size());
     }
+
+    @Test
+    public void testArrayMod() throws Exception {
+        Set<String> roles=new HashSet<>();
+        roles.add("test-update");
+        FieldAccessRoleEvaluator eval=new FieldAccessRoleEvaluator(md,roles);
+        JsonDoc doc1 = EvalTestContext.getDoc("./unmodifiableArray-1.json");
+        JsonDoc doc2 = EvalTestContext.getDoc("./unmodifiableArray-2.json");
+        JsonDoc doc3 = EvalTestContext.getDoc("./unmodifiableArray-3.json");
+        // Remove array element
+        List<Path> list=eval.getInaccessibleFields_Update(doc2,doc1);
+        System.out.println(list);
+        Assert.assertEquals(0,list.size());
+        // Remove array
+        list=eval.getInaccessibleFields_Update(doc3,doc1);
+        Assert.assertEquals(0,list.size());
+    }
 }
