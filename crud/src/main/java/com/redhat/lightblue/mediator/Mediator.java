@@ -34,6 +34,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.redhat.lightblue.OperationStatus;
 import com.redhat.lightblue.Request;
 import com.redhat.lightblue.Response;
+import com.redhat.lightblue.ExecutionOptions;
+import com.redhat.lightblue.AsynchResponseData;
 import com.redhat.lightblue.crud.BulkRequest;
 import com.redhat.lightblue.crud.BulkResponse;
 import com.redhat.lightblue.crud.CRUDController;
@@ -76,6 +78,11 @@ import com.redhat.lightblue.util.JsonDoc;
 import com.redhat.lightblue.util.Path;
 
 import com.redhat.lightblue.assoc.CompositeFindImpl;
+
+import com.redhat.lightblue.extensions.asynch.AsynchronousExecutionSupport;
+import com.redhat.lightblue.extensions.asynch.AsynchronousExecutionConfiguration;
+import com.redhat.lightblue.extensions.asynch.AsynchRequest;
+import com.redhat.lightblue.extensions.asynch.AsynchResponse;
 
 /**
  * The mediator looks at a request, performs basic validation, and passes the
@@ -603,14 +610,21 @@ public class Mediator {
     public BulkResponse bulkRequest(BulkRequest requests) {
         LOGGER.debug("Bulk request start");
         BulkResponse response = new BulkResponse();
-        if(checkAsynch(requests,response))
-            return response;
         Error.push("bulk operation");
         ExecutorService executor = Executors.newFixedThreadPool(factory.getBulkParallelExecutions());
         try {
             LOGGER.debug("Executing {} find requests in parallel", factory.getBulkParallelExecutions());
             List<Request> requestList = requests.getEntries();
             int n = requestList.size();
+            // Check for asynchronous execution. Order requests using priority
+            for(int i=0;i<n;i++) {
+                Request req=requestList.get(i);
+                ExecutionOptions o=req.getExecution();
+                if(isAsynch(o)) {
+                    if(o.getOptionValueFor("priority")==null)
+                        o.setOptionValue("priority",Integer.toString(i));
+                }
+            }
             BulkExecutionContext ctx = new BulkExecutionContext(n);
 
             for (int i = 0; i < n; i++) {
@@ -644,53 +658,107 @@ public class Mediator {
             executor.shutdown();
         }
     }
+
+    /**
+     * Get the jobId from the execution options, and check for the status. If completed, return the results
+     */
+    public Response getAsynchResponse(Request request) {
+        LOGGER.debug("getAsynchResponse start");
+        Response response=new Response();
+        try {
+            ExecutionOptions eo=request.getExecution();
+            if(eo!=null) {
+                String jobId=eo.getOptionValueFor("jobId");
+                if(jobId!=null) {
+                    AsynchronousExecutionSupport asynch=getAsynch();
+                    if(asynch!=null) {
+                        AsynchResponse ares=asynch.getAsynchronousExecutionStatus(jobId);
+                        if(ares.isCompleted()) {
+                            response=ares.getResponse();
+                        }
+                        response.setAsynch(fillResponse(ares));
+                    } else {
+                        throw Error.get(CrudConstants.ERR_NO_ASYNCH_SUPPORT,jobId);
+                    }
+                } else {
+                    throw Error.get(CrudConstants.ERR_MALFORMED_ASYNCH_REQ,"jobId=null");
+                }
+            } else {
+                throw Error.get(CrudConstants.ERR_MALFORMED_ASYNCH_REQ,"execution=null");
+            }
+        } catch (Error e) {
+            LOGGER.error("getAsynchResponse",e);
+            response.getErrors().add(e);
+        } catch (Exception ex) {
+            LOGGER.error("getAsynchResponse",ex);
+            response.getErrors().add(Error.get(CrudConstants.ERR_CRUD,ex.toString()));
+        }
+        return response;
+    }
+
+    private boolean isAsynch(ExecutionOptions eo) {
+        return eo!=null&&"true".equals(eo.getOptionValueFor("asynch"));
+    }
+
+
+    private AsynchronousExecutionSupport getAsynch() {
+        AsynchronousExecutionConfiguration cfg=factory.getAsynchronousExecutionConfiguration();
+        if(cfg!=null) {
+            // We are scheduling it
+            AsynchronousExecutionSupport asynch;
+            if(cfg.getBackend()!=null) {
+                CRUDController controller=factory.getCRUDController(cfg.getBackend());
+                if(controller==null)
+                    throw new RuntimeException("No backend named "+cfg.getBackend());
+                if(!(controller instanceof AsynchronousExecutionSupport))
+                    throw new  RuntimeException("Backend "+cfg.getBackend()+" does not support asynchronous execution scheduling");
+                asynch=(AsynchronousExecutionSupport)controller;
+            } else {
+                try {
+                    asynch=cfg.getSchedulerClass().newInstance();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return asynch;
+        }
+        return null;
+    }
     
     private AsynchronousExecutionSupport getAsynch(ExecutionOptions eo) {
-        if(eo!=null&&"true".equals(eo.getOptionValueFor("asynch"))) {
+        if(isAsynch(eo)) {
             // Asynchronous execution is requested, lets see if it is supported
-            AsynchronousExecutionConfiguration cfg=factory.getAsynchronousExecutionConfiguration();
-            if(cfg!=null) {
-                // We are scheduling it
-                AsynchronousExecutionSupport asynch;
-                if(cfg.getController()!=null) {
-                    CRUDController controller=factory.getCRUDController(cfg.getController());
-                    if(controller==null)
-                        throw new RuntimeException("No backend named "+cfg.getController());
-                    if(!controller instanceof AsynchronousExecutionSupport)
-                        throw new  RuntimeException("Backend "+cfg.getController()+" does not support asynchronous execution scheduling");
-                    asynch=(AsynchronousExecutionSupport)controller;
-                } else {
-                    try {
-                        asynch=cfg.getSchedulerClass().newInstance();
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-                asynch.scheduleAsynchronousExecution(ar);
-                return asynch;
-            }
+            return getAsynch();
         }
         return null;
     }
 
+    private AsynchResponseData fillResponse(AsynchResponse ares) {
+        AsynchResponseData responseData=new AsynchResponseData();
+        responseData.setJobId(ares.getJobId());
+        responseData.setPriority(ares.getPriority());
+        responseData.setScheduledTime(ares.getScheduledTime());
+        responseData.setExecutionStartTime(ares.getExecutionStartTime());
+        responseData.setCompletionTime(ares.getCompletionTime());
+        responseData.setTimeoutTime(ares.getTimeoutTime());
+        if(ares.getCompletionTime()!=null)
+            responseData.setStatus(AsynchResponseData.Status.completed);
+        else if(ares.getTimeoutTime()!=null)
+            responseData.setStatus(AsynchResponseData.Status.timedout);
+        else if(ares.getExecutionStartTime()!=null)
+            responseData.setStatus(AsynchResponseData.Status.executing);
+        else
+            responseData.setStatus(AsynchResponseData.Status.scheduled);
+        return responseData;
+    }
+
+    
     private boolean checkAsynch(Request request,Response response) {
         AsynchronousExecutionSupport aes=getAsynch(request.getExecution());
         if(aes!=null) {
-            AsynchRequest areq=new AsynchRequest(request);
-            String jobId=aes.scheduleAsynchronousExecution(areq);
-            // TODO
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    private boolean checkAsynch(BulkRequest request,BulkResponse response) {
-        AsynchronousExecutionSupport aes=getAsynch(request.getExecution());
-        if(aes!=null) {
-            AsynchRequest areq=new AsynchRequest(request);
-            String jobId=aes.scheduleAsynchronousExecution(areq);
-            // TODO
+            AsynchRequest areq=new AsynchRequest(request);            
+            AsynchResponse ares=aes.scheduleAsynchronousExecution(areq);
+            response.setAsynch(fillResponse(ares));
             return true;
         } else {
             return false;
