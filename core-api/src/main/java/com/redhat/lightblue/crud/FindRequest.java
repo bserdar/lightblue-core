@@ -20,6 +20,7 @@ package com.redhat.lightblue.crud;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.redhat.lightblue.Request;
 import com.redhat.lightblue.query.Projection;
 import com.redhat.lightblue.query.QueryExpression;
@@ -30,55 +31,61 @@ import com.redhat.lightblue.query.Sort;
  */
 public class FindRequest extends Request implements WithQuery, WithProjection, WithRange {
 
-    private final CRUDFindRequest cfr = new CRUDFindRequest();
+    private QueryExpression query;
+    private Projection projection;
+    private Sort sort;
+    private Long from;
+    private Long to;
 
     /**
      * The query
      */
-    @Override
     public QueryExpression getQuery() {
-        return cfr.getQuery();
+        return query;
     }
 
     /**
      * The query
      */
     public void setQuery(QueryExpression q) {
-        cfr.setQuery(q);
+        query = q;
     }
 
     /**
      * Specifies what fields of the documents to return
      */
-    @Override
     public Projection getProjection() {
-        return cfr.getProjection();
+        return projection;
     }
 
     /**
      * Specifies what fields of the documents to return
      */
     public void setProjection(Projection x) {
-        cfr.setProjection(x);
+        projection = x;
     }
 
     /**
      * Specifies the order in which the documents will be returned
      */
     public Sort getSort() {
-        return cfr.getSort();
+        return sort;
     }
 
     /**
      * Specifies the order in which the documents will be returned
      */
     public void setSort(Sort s) {
-        cfr.setSort(s);
+        sort = s;
     }
 
+    /**
+     * Specifies the index in the result set to start returning documents.
+     * Meaningful only if sort is given. Starts from 0.
+     */
     @Override
     public Long getFrom() {
-        return cfr.getFrom();
+        return from;
     }
 
     /**
@@ -86,12 +93,16 @@ public class FindRequest extends Request implements WithQuery, WithProjection, W
      * Meaningful only if sort is given. Starts from 0.
      */
     public void setFrom(Long l) {
-        cfr.setFrom(l);
+        from = l;
     }
 
+    /**
+     * Specifies the last index of the document in the result set to be
+     * returned. Meaningful only if sort is given. Starts from 0.
+     */
     @Override
     public Long getTo() {
-        return cfr.getTo();
+        return to;
     }
 
     /**
@@ -99,34 +110,36 @@ public class FindRequest extends Request implements WithQuery, WithProjection, W
      * returned. Meaningful only if sort is given. Starts from 0.
      */
     public void setTo(Long l) {
-        cfr.setTo(l);
-    }
-
-    public CRUDFindRequest getCRUDFindRequest() {
-        return cfr;
-    }
-
-    public void shallowCopyFrom(FindRequest r) {
-        shallowCopyFrom(r, r.getCRUDFindRequest());
-    }
-
-    public void shallowCopyFrom(Request r, CRUDFindRequest c) {
-        super.shallowCopyFrom(r);
-        cfr.shallowCopyFrom(c);
-    }
-
-    @Override
-    public CRUDOperation getOperation() {
-        return CRUDOperation.FIND;
+        to = l;
     }
 
     /**
-     * Returns JSON representation of this
+     * Shallow copy from r to this
      */
-    @Override
+    public void shallowCopyFrom(FindRequest r) {
+        super.shallowCopyFrom(r);
+        query = r.query;
+        projection = r.projection;
+        sort = r.sort;
+        from = r.from;
+        to = r.to;
+    }
+
+    /**
+     * Populates an object node with the JSON representation of this
+     */
     public JsonNode toJson() {
         ObjectNode node = (ObjectNode) super.toJson();
-        getCRUDFindRequest().toJson(getFactory(), node);
+        if (query != null) {
+            node.set("query", query.toJson());
+        }
+        if (projection != null) {
+            node.set("projection", projection.toJson());
+        }
+        if (sort != null) {
+            node.set("sort", sort.toJson());
+        }
+        WithRange.toJson(this, JsonNodeFactory.instance, node);
         return node;
     }
 
@@ -135,9 +148,27 @@ public class FindRequest extends Request implements WithQuery, WithProjection, W
      * ignored.
      */
     public static FindRequest fromJson(ObjectNode node) {
-        FindRequest req = new FindRequest();
-        req.parse(node);
-        req.getCRUDFindRequest().fromJson(node);
+        FindRequest req=new FindRequest();
+        JsonNode x = node.get("query");
+        if (x != null) {
+            req.query = QueryExpression.fromJson(x);
+        }
+        x = node.get("projection");
+        if (x != null) {
+            req.projection = Projection.fromJson(x);
+        }
+        x = node.get("sort");
+        if (x != null) {
+            req.sort = Sort.fromJson(x);
+        }
+        Range r = WithRange.fromJson(node);
+        req.setFrom(r.from);
+        req.setTo(r.to);
         return req;
+    }
+
+    @Override
+    public CRUDOperation getOperation() {
+        return CRUDOperation.FIND;
     }
 }

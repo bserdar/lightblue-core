@@ -151,7 +151,9 @@ public final class OperationContext extends CRUDOperationContext {
     public OperationContext getDerivedOperationContext(String entityName, CRUDFindRequest req) {
         // Create a new request with same header information, but different query information
         FindRequest newReq = new FindRequest();
-        newReq.shallowCopyFrom((Request) request, req);
+        // Get request bits from request, FindRequest bits from req
+        newReq.shallowCopyFrom(req);
+        newReq.shallowCopyFrom((Request) request);
         newReq.setEntityVersion(new EntityVersion(entityName, resolver.getEntityMetadata(entityName).getVersion().getValue()));
         // At this point, newReq has header information from the
         // original request, but query information from the argument

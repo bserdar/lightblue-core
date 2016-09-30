@@ -25,8 +25,7 @@ public class CRUDFindRequestTest extends AbstractJsonNodeTest {
     @Test
     public void test_range() throws IOException {
         JsonNode node = loadJsonNode("crud/find/schema-test-find-simple.json");
-        CRUDFindRequest req = new CRUDFindRequest();
-        req.fromJson((ObjectNode) node);
+        FindRequest req = CRUDFindRequest.fromJson((ObjectNode) node);
 
         Assert.assertEquals(0, req.getFrom().longValue());
         Assert.assertEquals(10, req.getTo().longValue());
@@ -35,8 +34,7 @@ public class CRUDFindRequestTest extends AbstractJsonNodeTest {
     @Test
     public void test_fromTo() throws IOException {
         JsonNode node = loadJsonNode("crud/find/schema-test-find-simple-from-to.json");
-        CRUDFindRequest req = new CRUDFindRequest();
-        req.fromJson((ObjectNode) node);
+        FindRequest req = CRUDFindRequest.fromJson((ObjectNode) node);
 
         Assert.assertEquals(100, req.getFrom().longValue());
         Assert.assertEquals(200, req.getTo().longValue());
@@ -45,8 +43,7 @@ public class CRUDFindRequestTest extends AbstractJsonNodeTest {
     @Test
     public void test_from() throws IOException {
         JsonNode node = loadJsonNode("crud/find/schema-test-find-simple-from.json");
-        CRUDFindRequest req = new CRUDFindRequest();
-        req.fromJson((ObjectNode) node);
+        FindRequest req = CRUDFindRequest.fromJson((ObjectNode) node);
 
         Assert.assertEquals(100, req.getFrom().longValue());
         Assert.assertNull(req.getTo());
@@ -55,8 +52,7 @@ public class CRUDFindRequestTest extends AbstractJsonNodeTest {
     @Test
     public void test_maxResults() throws IOException {
         JsonNode node = loadJsonNode("crud/find/schema-test-find-simple-max.json");
-        CRUDFindRequest req = new CRUDFindRequest();
-        req.fromJson((ObjectNode) node);
+        FindRequest req = CRUDFindRequest.fromJson((ObjectNode) node);
 
         Assert.assertEquals(99, req.getTo().longValue());
         Assert.assertNull(req.getFrom());
@@ -65,8 +61,7 @@ public class CRUDFindRequestTest extends AbstractJsonNodeTest {
     @Test
     public void test_to() throws IOException {
         JsonNode node = loadJsonNode("crud/find/schema-test-find-simple-to.json");
-        CRUDFindRequest req = new CRUDFindRequest();
-        req.fromJson((ObjectNode) node);
+        FindRequest req = CRUDFindRequest.fromJson((ObjectNode) node);
 
         Assert.assertNull(req.getFrom());
         Assert.assertEquals(200, req.getTo().longValue());
@@ -75,8 +70,7 @@ public class CRUDFindRequestTest extends AbstractJsonNodeTest {
     @Test
     public void test_zero_maxResults() throws IOException {
         JsonNode node = loadJsonNode("crud/find/schema-test-find-simple-0-max.json");
-        CRUDFindRequest req = new CRUDFindRequest();
-        req.fromJson((ObjectNode) node);
+        FindRequest req = CRUDFindRequest.fromJson((ObjectNode) node);
 
         Assert.assertEquals(-1, req.getTo().longValue());
         Assert.assertNull(req.getFrom());
@@ -85,8 +79,7 @@ public class CRUDFindRequestTest extends AbstractJsonNodeTest {
     @Test
     public void test_one_maxResults() throws IOException {
         JsonNode node = loadJsonNode("crud/find/schema-test-find-simple-1-max.json");
-        CRUDFindRequest req = new CRUDFindRequest();
-        req.fromJson((ObjectNode) node);
+        FindRequest req = CRUDFindRequest.fromJson((ObjectNode) node);
 
         Assert.assertEquals(0, req.getTo().longValue());
         Assert.assertNull(req.getFrom());
@@ -95,8 +88,7 @@ public class CRUDFindRequestTest extends AbstractJsonNodeTest {
     @Test
     public void test_zero_to() throws IOException {
         JsonNode node = loadJsonNode("crud/find/schema-test-find-simple-0-to.json");
-        CRUDFindRequest req = new CRUDFindRequest();
-        req.fromJson((ObjectNode) node);
+        FindRequest req = CRUDFindRequest.fromJson((ObjectNode) node);
 
         Assert.assertNull(req.getFrom());
         Assert.assertEquals(0, req.getTo().longValue());
@@ -105,8 +97,7 @@ public class CRUDFindRequestTest extends AbstractJsonNodeTest {
     @Test
     public void test_null_to() throws IOException {
         JsonNode node = loadJsonNode("crud/find/schema-test-find-simple-null-to.json");
-        CRUDFindRequest req = new CRUDFindRequest();
-        req.fromJson((ObjectNode) node);
+        FindRequest req = CRUDFindRequest.fromJson((ObjectNode) node);
 
         Assert.assertEquals(0, req.getFrom().longValue());
         Assert.assertNull(req.getTo());
