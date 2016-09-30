@@ -31,16 +31,26 @@ public class AsynchResponse implements Serializable {
     private final String jobId;
     private Response response;
     private BulkResponse bulkResponse;
+    private int priority;
     private Date scheduledTime;
     private Date executionStartTime;
     private Date completionTime;
+    private Date timeoutTime;
 
     public AsynchResponse(String jobId) {
         this.jobId=jobId;
     }
-    
+
     public String getJobId() {
         return jobId;
+    }
+
+    public int getPriority() {
+        return priority;
+    }
+
+    public void setPriority(int i) {
+        priority=i;
     }
 
     public Response getResponse() {
@@ -83,6 +93,14 @@ public class AsynchResponse implements Serializable {
         completionTime=d;
     }
 
+    public Date getTimeoutTime() {
+        return timeoutTime;
+    }
+
+    public void setTimeoutTime(Date d) {
+        timeoutTime=d;
+    }
+    
     public boolean isCompleted() {
         return completionTime!=null;
     }

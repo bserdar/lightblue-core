@@ -30,9 +30,9 @@ public interface AsynchronousExecutionSupport extends Extension {
      *
      * @param request The request
      *
-     * @return Job id. The job id is used to retrieve job status later.
+     * @return The asynchronous response, which contains the job id
      */
-    public String scheduleAsynchronousExecution(AsynchRequest request);
+    public AsynchResponse scheduleAsynchronousExecution(AsynchRequest request);
 
     /**
      * Retrieve the status, or the results of an asynchronous execution

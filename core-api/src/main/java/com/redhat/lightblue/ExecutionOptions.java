@@ -43,6 +43,10 @@ public class ExecutionOptions extends JsonObject {
         return options.get(optionName);
     }
 
+    public void setOptionValue(String name,String value) {
+        options.put(name,value);
+    }
+
     /**
      * Returns a json representation of this
      */

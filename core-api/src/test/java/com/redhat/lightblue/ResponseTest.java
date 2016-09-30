@@ -101,27 +101,6 @@ public class ResponseTest {
     }
 
     @Test
-    public void testWithTaskHandle() {
-        String taskHandle = "taskHandle";
-        node = JsonNodeFactory.withExactBigDecimals(true).textNode(taskHandle);
-        builder.withTaskHandle(node);
-        assertTrue(taskHandle.equals(builder.buildResponse().getTaskHandle()));
-    }
-
-    @Test
-    public void testWithTaskHandleNull() {
-        String taskHandle = "taskHandle";
-        builder.withTaskHandle(null);
-        assertFalse(taskHandle.equals(builder.buildResponse().getTaskHandle()));
-    }
-
-    @Test
-    public void testWithSessionNull() {
-        builder.withSession(null);
-        //TODO Assert something session implemented
-    }
-
-    @Test
     public void testWithEntityDataObject() {
         node = JsonNodeFactory.withExactBigDecimals(true).objectNode();
         builder.withEntityData(node);
@@ -206,8 +185,6 @@ public class ResponseTest {
         response.setStatus(OperationStatus.COMPLETE);
         response.setModifiedCount(Integer.MAX_VALUE);
         response.setMatchCount(Integer.MIN_VALUE);
-        response.setTaskHandle("taskHandle");
-        response.setSessionInfo(null);
         response.setEntityData(null);
         response.getDataErrors().addAll(new ArrayList<DataError>());
         response.getErrors().addAll(new ArrayList<Error>());
@@ -222,8 +199,6 @@ public class ResponseTest {
         response.setStatus(OperationStatus.COMPLETE);
         response.setModifiedCount(Integer.MAX_VALUE);
         response.setMatchCount(Integer.MIN_VALUE);
-        response.setTaskHandle("taskHandle");
-        response.setSessionInfo(null);
         response.setEntityData(JsonObject.getFactory().objectNode());
         response.getDataErrors().addAll(getPopulatedDataErrors(3));
         response.getErrors().addAll(getPopulatedErrors(3));

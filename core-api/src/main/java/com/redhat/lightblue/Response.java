@@ -41,8 +41,6 @@ public class Response extends JsonObject {
     private static final String PROPERTY_STATUS = "status";
     private static final String PROPERTY_MOD_COUNT = "modifiedCount";
     private static final String PROPERTY_MATCH_COUNT = "matchCount";
-    private static final String PROPERTY_TASK_HANDLE = "taskHandle";
-    private static final String PROPERTY_SESSION = "session";
     private static final String PROPERTY_PROCESSED = "processed";
     private static final String PROPERTY_DATA_ERRORS = "dataErrors";
     private static final String PROPERTY_ERRORS = "errors";
@@ -51,12 +49,11 @@ public class Response extends JsonObject {
     private OperationStatus status;
     private long modifiedCount;
     private long matchCount;
-    private String taskHandle;
-    private SessionInfo session;
     private transient JsonNode entityData;
     private String hostname;
     private final List<DataError> dataErrors = new ArrayList<>();
     private final List<Error> errors = new ArrayList<>();
+    private AsynchResponseData asynch;
 
     private final JsonNodeFactory jsonNodeFactory;
 
@@ -139,44 +136,18 @@ public class Response extends JsonObject {
     }
 
     /**
-     * If the operation continues asynchronously, the task handle can be used to
-     * retrieve status information, and the result of the call once the
-     * operation is complete
-     */
-    public String getTaskHandle() {
-        return taskHandle;
-    }
-
-    /**
-     * If the operation continues asynchronously, the task handle can be used to
-     * retrieve status information, and the result of the call once the
-     * operation is complete
-     */
-    public void setTaskHandle(String t) {
-        taskHandle = t;
-    }
-
-    /**
-     * If the operation starts a session or uses an existing session, the
-     * session information
-     */
-    public SessionInfo getSessionInfo() {
-        return session;
-    }
-
-    /**
-     * If the operation starts a session or uses an existing session, the
-     * session information
-     */
-    public void setSessionInfo(SessionInfo s) {
-        session = s;
-    }
-
-    /**
      * Returns the entity data resulting from the call.
      */
     public JsonNode getEntityData() {
         return entityData;
+    }
+
+    public AsynchResponseData getAsynch() {
+        return asynch;
+    }
+
+    public void setAsynch(AsynchResponseData d) {
+        asynch=d;
     }
 
     /**
@@ -216,12 +187,11 @@ public class Response extends JsonObject {
         builder.add(PROPERTY_STATUS, status);
         builder.add(PROPERTY_MOD_COUNT, modifiedCount);
         builder.add(PROPERTY_MATCH_COUNT, matchCount);
-        builder.add(PROPERTY_TASK_HANDLE, taskHandle);
-        builder.add(PROPERTY_SESSION, session);
         builder.add(PROPERTY_PROCESSED, entityData);
         builder.add(PROPERTY_HOSTNAME, HOSTNAME);
         builder.addJsonObjectsList(PROPERTY_DATA_ERRORS, dataErrors);
         builder.addErrorsList(PROPERTY_ERRORS, errors);
+        builder.add("asynch",asynch);
         return builder.build();
     }
 
@@ -230,8 +200,6 @@ public class Response extends JsonObject {
         private OperationStatus status;
         private long modifiedCount;
         private long matchCount;
-        private String taskHandle;
-        private SessionInfo session;
         private JsonNode entityData;
         private String hostname;
         private List<DataError> dataErrors = new ArrayList<>();
@@ -248,8 +216,6 @@ public class Response extends JsonObject {
             modifiedCount = response.getModifiedCount();
             matchCount = response.getMatchCount();
             hostname = response.getHostname();
-            taskHandle = response.getTaskHandle();
-            session = response.getSessionInfo();
             entityData = response.getEntityData();
             dataErrors = response.getDataErrors();
             errors = response.getErrors();
@@ -288,17 +254,6 @@ public class Response extends JsonObject {
             return this;
         }
 
-        public ResponseBuilder withTaskHandle(JsonNode node) {
-            if (node != null) {
-                taskHandle = node.asText();
-            }
-            return this;
-        }
-
-        public ResponseBuilder withSession(JsonNode node) {
-            //TODO
-            return this;
-        }
 
         public ResponseBuilder withEntityData(JsonNode node) {
             if (node != null) {
@@ -333,8 +288,6 @@ public class Response extends JsonObject {
             response.setStatus(status);
             response.setModifiedCount(modifiedCount);
             response.setMatchCount(matchCount);
-            response.setTaskHandle(taskHandle);
-            response.setSessionInfo(session);
             response.setEntityData(entityData);
             response.getDataErrors().addAll(dataErrors);
             response.getErrors().addAll(errors);
