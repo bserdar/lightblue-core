@@ -27,8 +27,11 @@ import java.util.Comparator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.redhat.lightblue.Request;
+
 import static com.redhat.lightblue.util.JsonUtils.json;
+
+import com.redhat.lightblue.Request;
+
 import java.math.BigDecimal;
 
 /**

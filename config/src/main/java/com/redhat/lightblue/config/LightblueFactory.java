@@ -146,6 +146,7 @@ public final class LightblueFactory implements Serializable {
             getJsonTranslator().setValidation(Request.class, configuration.isValidateRequests());
 
             Factory f = new Factory();
+            f.setAsynchronousExecutionConfiguration(configuration.getAsynchronousExecutionConfiguration());
             f.setBulkParallelExecutions(configuration.getBulkParallelExecutions());
             f.addFieldConstraintValidators(new DefaultFieldConstraintValidators());
 

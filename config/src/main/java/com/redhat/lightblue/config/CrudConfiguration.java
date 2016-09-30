@@ -29,6 +29,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 
 import com.redhat.lightblue.util.JsonInitializable;
 
+import com.redhat.lightblue.extensions.asynch.AsynchronousExecutionConfiguration;
+
 /**
  * JSON based configuration file.
  *
@@ -46,6 +48,7 @@ public class CrudConfiguration implements JsonInitializable, Serializable {
     private ControllerConfiguration controllers[];
     private boolean validateRequests = false;
     private int bulkParallelExecutions = 3;
+    private AsynchronousExecutionConfiguration asynch;
 
     public boolean isValidateRequests() {
         return validateRequests;
@@ -62,6 +65,15 @@ public class CrudConfiguration implements JsonInitializable, Serializable {
     public void setBulkParallelExecutions(int i) {
         bulkParallelExecutions = i;
     }
+
+    public AsynchronousExecutionConfiguration getAsynchronousExecutionConfiguration() {
+        return asynch;
+    }
+
+    public void setAsynchronousExecutionConfiguration(AsynchronousExecutionConfiguration cfg) {
+        asynch=cfg;
+    }
+    
 
     /**
      * @return the controllers
@@ -116,6 +128,11 @@ public class CrudConfiguration implements JsonInitializable, Serializable {
             x = node.get("bulkParallelExecutions");
             if (x != null) {
                 bulkParallelExecutions = x.intValue();
+            }
+            x = node.get("asynchronousExecutions");
+            if(x!=null) {
+                asynch = new AsynchronousExecutionConfiguration();
+                asynch.initializeFromJson(x);
             }
         }
     }

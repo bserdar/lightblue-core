@@ -39,6 +39,7 @@ import com.redhat.lightblue.crud.BulkResponse;
 import com.redhat.lightblue.crud.CRUDController;
 import com.redhat.lightblue.crud.CRUDDeleteResponse;
 import com.redhat.lightblue.crud.CRUDFindResponse;
+import com.redhat.lightblue.crud.CRUDFindRequest;
 import com.redhat.lightblue.crud.CRUDOperation;
 import com.redhat.lightblue.crud.CRUDUpdateResponse;
 import com.redhat.lightblue.crud.ConstraintValidator;
@@ -110,8 +111,10 @@ public class Mediator {
      */
     public Response insert(InsertionRequest req) {
         LOGGER.debug("insert {}", req.getEntityVersion());
-        Error.push("insert(" + req.getEntityVersion().toString() + ")");
         Response response = new Response(factory.getNodeFactory());
+        if(checkAsynch(req,response))
+            return response;
+        Error.push("insert(" + req.getEntityVersion().toString() + ")");
         try {
             OperationContext ctx = newCtx(req, CRUDOperation.INSERT);
             EntityMetadata md = ctx.getTopLevelEntityMetadata();
@@ -177,9 +180,11 @@ public class Mediator {
      */
     public Response save(SaveRequest req) {
         LOGGER.debug("save {}", req.getEntityVersion());
-        Error.push("save(" + req.getEntityVersion().toString() + ")");
         Response response = new Response(factory.getNodeFactory());
-        try {
+         if(checkAsynch(req,response))
+            return response;
+        Error.push("save(" + req.getEntityVersion().toString() + ")");
+       try {
             OperationContext ctx = newCtx(req, CRUDOperation.SAVE);
             EntityMetadata md = ctx.getTopLevelEntityMetadata();
             if (!md.getAccess().getUpdate().hasAccess(ctx.getCallerRoles())
@@ -244,8 +249,10 @@ public class Mediator {
      */
     public Response update(UpdateRequest req) {
         LOGGER.debug("update {}", req.getEntityVersion());
-        Error.push("update(" + req.getEntityVersion().toString() + ")");
         Response response = new Response(factory.getNodeFactory());
+        if(checkAsynch(req,response))
+            return response;
+        Error.push("update(" + req.getEntityVersion().toString() + ")");
         try {
             OperationContext ctx = newCtx(req, CRUDOperation.UPDATE);
             CompositeMetadata md = ctx.getTopLevelEntityMetadata();
@@ -312,8 +319,10 @@ public class Mediator {
 
     public Response delete(DeleteRequest req) {
         LOGGER.debug("delete {}", req.getEntityVersion());
-        Error.push("delete(" + req.getEntityVersion().toString() + ")");
         Response response = new Response(factory.getNodeFactory());
+        if(checkAsynch(req,response))
+            return response;
+        Error.push("delete(" + req.getEntityVersion().toString() + ")");
         try {
             OperationContext ctx = newCtx(req, CRUDOperation.DELETE);
             CompositeMetadata md = ctx.getTopLevelEntityMetadata();
@@ -390,7 +399,7 @@ public class Mediator {
         OperationContext findCtx = new OperationContext(freq, CRUDOperation.FIND, ctx);
         CompositeFindImpl finder = new CompositeFindImpl(md);
         finder.setParallelism(9);
-        CRUDFindResponse response = finder.find(findCtx, freq.getCRUDFindRequest());
+        CRUDFindResponse response = finder.find(findCtx, new CRUDFindRequest(freq));
         List<JsonDoc> docs = findCtx.getOutputDocumentsWithoutErrors();
         LOGGER.debug("Found documents:{}", docs.size());
 
@@ -433,8 +442,10 @@ public class Mediator {
      */
     public Response find(FindRequest req) {
         LOGGER.debug("find {}", req.getEntityVersion());
-        Error.push("find(" + req.getEntityVersion().toString() + ")");
         Response response = new Response(factory.getNodeFactory());
+        if(checkAsynch(req,response))
+            return response;
+        Error.push("find(" + req.getEntityVersion().toString() + ")");
         response.setStatus(OperationStatus.ERROR);
         try {
             OperationContext ctx = newCtx(req, CRUDOperation.FIND);
@@ -456,7 +467,7 @@ public class Mediator {
                     ((CompositeFindImpl) finder).setParallelism(9);
                 }
 
-                CRUDFindResponse result = finder.find(ctx, req.getCRUDFindRequest());
+                CRUDFindResponse result = finder.find(ctx, new CRUDFindRequest(req));
 
                 List<JsonDoc> foundDocuments = ctx.getOutputDocumentsWithoutErrors();
                 if (foundDocuments != null && foundDocuments.size() == ctx.getDocuments().size()) {
@@ -524,7 +535,7 @@ public class Mediator {
                 ((CompositeFindImpl) finder).setParallelism(9);
             }
             
-            finder.explain(ctx, req.getCRUDFindRequest());
+            finder.explain(ctx, new CRUDFindRequest(req));
             
             List<JsonDoc> foundDocuments = ctx.getOutputDocumentsWithoutErrors();
             if (foundDocuments != null && !foundDocuments.isEmpty()) {
@@ -591,6 +602,9 @@ public class Mediator {
 
     public BulkResponse bulkRequest(BulkRequest requests) {
         LOGGER.debug("Bulk request start");
+        BulkResponse response = new BulkResponse();
+        if(checkAsynch(requests,response))
+            return response;
         Error.push("bulk operation");
         ExecutorService executor = Executors.newFixedThreadPool(factory.getBulkParallelExecutions());
         try {
@@ -623,12 +637,63 @@ public class Mediator {
             }
             wait(ctx);
             LOGGER.debug("Bulk execution completed");
-            BulkResponse response = new BulkResponse();
             response.setEntries(ctx.responses);
             Error.pop();
             return response;
         } finally {
             executor.shutdown();
+        }
+    }
+    
+    private AsynchronousExecutionSupport getAsynch(ExecutionOptions eo) {
+        if(eo!=null&&"true".equals(eo.getOptionValueFor("asynch"))) {
+            // Asynchronous execution is requested, lets see if it is supported
+            AsynchronousExecutionConfiguration cfg=factory.getAsynchronousExecutionConfiguration();
+            if(cfg!=null) {
+                // We are scheduling it
+                AsynchronousExecutionSupport asynch;
+                if(cfg.getController()!=null) {
+                    CRUDController controller=factory.getCRUDController(cfg.getController());
+                    if(controller==null)
+                        throw new RuntimeException("No backend named "+cfg.getController());
+                    if(!controller instanceof AsynchronousExecutionSupport)
+                        throw new  RuntimeException("Backend "+cfg.getController()+" does not support asynchronous execution scheduling");
+                    asynch=(AsynchronousExecutionSupport)controller;
+                } else {
+                    try {
+                        asynch=cfg.getSchedulerClass().newInstance();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                asynch.scheduleAsynchronousExecution(ar);
+                return asynch;
+            }
+        }
+        return null;
+    }
+
+    private boolean checkAsynch(Request request,Response response) {
+        AsynchronousExecutionSupport aes=getAsynch(request.getExecution());
+        if(aes!=null) {
+            AsynchRequest areq=new AsynchRequest(request);
+            String jobId=aes.scheduleAsynchronousExecution(areq);
+            // TODO
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private boolean checkAsynch(BulkRequest request,BulkResponse response) {
+        AsynchronousExecutionSupport aes=getAsynch(request.getExecution());
+        if(aes!=null) {
+            AsynchRequest areq=new AsynchRequest(request);
+            String jobId=aes.scheduleAsynchronousExecution(areq);
+            // TODO
+            return true;
+        } else {
+            return false;
         }
     }
 

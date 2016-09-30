@@ -27,7 +27,6 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 
 import com.redhat.lightblue.util.JsonObject;
-import com.redhat.lightblue.Request;
 
 /**
  * Base class for bulk request and responses. This class contains the code
