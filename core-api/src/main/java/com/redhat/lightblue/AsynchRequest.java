@@ -28,6 +28,24 @@ import com.redhat.lightblue.util.Constants;
 
 import com.redhat.lightblue.crud.*;
 
+/**
+ * Envelope for asynchronous requests. Contains a single request or a
+ * bulk request, with an optional schedule time and priority.
+ *
+ * JSON:
+ * <pre>
+ * {
+ *     "request": { ... },
+ *     "bulkRequest": { ... },
+ *     "op": INSERT|SAVE|UPDATE|DELETE|FIND,
+ *     "executeAfter": <date>,
+ *     "priority": <number>
+ * }
+ * </pre>
+ * 
+ * Only one of "request" or "bulkRequest" can be present. If "request"
+ * is present, "op" should also be present.
+ */
 public class AsynchRequest extends JsonObject {
 
     private final Request request;

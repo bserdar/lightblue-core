@@ -34,6 +34,28 @@ import com.redhat.lightblue.util.Error;;
 
 import com.redhat.lightblue.crud.BulkResponse;
 
+/**
+ * Asynchronous execution response envelope. Contains the job id,
+ * single or bulk response, and task information.
+ *
+ * JSON:
+ * <pre>
+ * {
+ *    "jobId": <jobId>,
+ *    "response": {...},
+ *    "bulkResponse": {...},
+ *    "priority": <number>,
+ *    "scheduledTime": <date>,
+ *    "executionStartTime": <date>,
+ *    "completionTime": <date>,
+ *    "timeoutTime": <date>,
+ *    "asynchStatus": scheduled|executing|completed|timedout,
+ *    "errors": [ ... ],
+ *    "host": hostname,
+ *    "status": COMPLETED | ERROR
+ * }
+ * </pre>
+ */
 public class AsynchResponse extends JsonObject {
     public enum AsynchStatus { scheduled, executing, completed, timedout };
 
