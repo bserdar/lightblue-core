@@ -663,6 +663,9 @@ public class Mediator {
         return null;
     }
 
+    /**
+     * Submit a request for asynchronous execution
+     */
     public AsynchResponse submitAsynchRequest(AsynchRequest request) {
         AsynchResponse response;
         try {
