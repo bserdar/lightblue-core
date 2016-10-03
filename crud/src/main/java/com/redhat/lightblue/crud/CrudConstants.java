@@ -77,7 +77,7 @@ public final class CrudConstants {
     public static final String ERR_DATASOURCE_UNKNOWN = "crud:DataSourceUnknown";
 
     public static final String ERR_NO_ASYNCH_SUPPORT = "crud:NoAsynchSupport";
-    public static final String ERR_MALFORMED_ASYNCH_REQ = "crud:MalformedAsynchRequest";
+    public static final String ERR_ASYNCH = "crud:Asynch";
     
     private CrudConstants() {
 

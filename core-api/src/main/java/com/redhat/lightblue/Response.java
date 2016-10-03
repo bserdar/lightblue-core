@@ -53,11 +53,10 @@ public class Response extends JsonObject {
     private String hostname;
     private final List<DataError> dataErrors = new ArrayList<>();
     private final List<Error> errors = new ArrayList<>();
-    private AsynchResponseData asynch;
 
     private final JsonNodeFactory jsonNodeFactory;
 
-    private static final String HOSTNAME;
+    public static final String HOSTNAME;
 
     static {
         String hostName = "unknown";
@@ -142,14 +141,6 @@ public class Response extends JsonObject {
         return entityData;
     }
 
-    public AsynchResponseData getAsynch() {
-        return asynch;
-    }
-
-    public void setAsynch(AsynchResponseData d) {
-        asynch=d;
-    }
-
     /**
      * Returns the entity data resulting from the call.
      */
@@ -191,7 +182,6 @@ public class Response extends JsonObject {
         builder.add(PROPERTY_HOSTNAME, HOSTNAME);
         builder.addJsonObjectsList(PROPERTY_DATA_ERRORS, dataErrors);
         builder.addErrorsList(PROPERTY_ERRORS, errors);
-        builder.add("asynch",asynch);
         return builder.build();
     }
 
