@@ -35,7 +35,7 @@ public interface AsynchronousExecutionSupport extends Extension {
      *
      * @return The asynchronous response, which contains the job id
      */
-    public AsynchResponse scheduleAsynchronousExecution(AsynchRequest request);
+    AsynchResponse scheduleAsynchronousExecution(AsynchRequest request);
 
     /**
      * Retrieve the status, or the results of an asynchronous execution
@@ -47,5 +47,20 @@ public interface AsynchronousExecutionSupport extends Extension {
      * execution is complete, the backend may choose to remove the job
      * from job storage, so calling this api again might fail.
      */
-    public AsynchResponse getAsynchronousExecutionStatus(String jobId);
+    AsynchResponse getAsynchronousExecutionStatus(String jobId);
+
+    /**
+     * Retrieves and locks the next available request from the job
+     * queue. This call should change the status of the job to
+     * 'executing' and set the necessary timestamps
+     *
+     * Returns the next available request, or null if no requests are
+     * in the job queue.
+     */
+    AsynchronousJob getAndLockNextAsynchronousJob();
+
+    /**
+     * Update an asymchronous job
+     */
+    void updateAsynchronousJob(AsynchronousJob job);
 }

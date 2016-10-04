@@ -42,16 +42,17 @@ import com.redhat.lightblue.util.JsonDoc;
 public abstract class CRUDOperationContext implements MetadataResolver, Serializable {
 
     private static final long serialVersionUID = 1l;
-
+    
     private final Factory factory;
     private final String entityName;
     private final Set<String> callerRoles;
     private List<DocCtx> documents;
     private final List<Error> errors = new ArrayList<>();
-    private final Map<String, Object> propertyMap = new HashMap<>();
+    protected final Map<String, Object> propertyMap;
     private final CRUDOperation CRUDOperation;
     private final HookManager hookManager;
     private final ExecutionOptions executionOptions;
+    private boolean asynch=false;
 
     /**
      * This is the constructor used to represent the context of an operation
@@ -69,6 +70,7 @@ public abstract class CRUDOperationContext implements MetadataResolver, Serializ
         this.hookManager = new HookManager(factory.getHookResolver(), factory.getNodeFactory());
         this.callerRoles = new HashSet<>();
         this.executionOptions = eo;
+        this.propertyMap=new HashMap<>();
     }
 
     public CRUDOperationContext(CRUDOperation op,
@@ -77,7 +79,9 @@ public abstract class CRUDOperationContext implements MetadataResolver, Serializ
                                 Set<String> callerRoles,
                                 HookManager hookManager,
                                 List<JsonDoc> docs,
-                                ExecutionOptions eo) {
+                                ExecutionOptions eo,
+                                Map<String,Object> propertyMap,
+                                boolean asynch) {
         this.CRUDOperation = op;
         this.entityName = entityName;
         this.factory = f;
@@ -85,6 +89,8 @@ public abstract class CRUDOperationContext implements MetadataResolver, Serializ
         this.callerRoles = callerRoles;
         this.hookManager = hookManager;
         this.executionOptions = eo;
+        this.propertyMap=propertyMap;
+        this.asynch=asynch;
     }
 
     /**
@@ -97,7 +103,9 @@ public abstract class CRUDOperationContext implements MetadataResolver, Serializ
                                 List<DocCtx> docs,
                                 Set<String> callerRoles,
                                 HookManager hookManager,
-                                ExecutionOptions eo) {
+                                ExecutionOptions eo,
+                                Map<String,Object> propertyMap,
+                                boolean asynch) {
         this.CRUDOperation = op;
         this.entityName = entityName;
         this.factory = f;
@@ -105,6 +113,22 @@ public abstract class CRUDOperationContext implements MetadataResolver, Serializ
         this.callerRoles = callerRoles;
         this.hookManager = hookManager;
         this.executionOptions = eo;
+        this.propertyMap=propertyMap;
+        this.asynch=asynch;
+    }
+
+    /**
+     * If true, this is an asynchronous operation, so certain limits should be relaxed
+     */
+    public boolean isAsynch() {
+        return asynch;
+    }
+
+    /**
+     * If true, this is an asynchronous operation, so certain limits should be relaxed
+     */
+    public void setAsynch(boolean b) {
+        asynch=b;
     }
 
     /**
