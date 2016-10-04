@@ -27,7 +27,8 @@ public class DriverThread extends AbstractAsynchProcessorThread {
     private final AsynchConfiguration cfg;
     private final LightblueFactory lightblueFactory;
     
-    public DriverThread(AsynchConfiguration cfg,LightblueFactory lbf) {
+    public DriverThread(AsynchConfiguration cfg,LightblueFactory lbf)
+        throws Exception {
         super("DriverThread");
         this.cfg=cfg;
         this.lightblueFactory=lbf;
@@ -75,7 +76,7 @@ public class DriverThread extends AbstractAsynchProcessorThread {
                         RequestProcessorThread pt=(RequestProcessorThread)t;
                         if(pt.isAlive()) {
                             long workingTime=durationMsecs(pt.getLastPing());
-                            if(workingTime>pt.getTimeoutMsecs()) {
+                            if(workingTime>pt.getProcessorTimeoutMsecs()) {
                                 LOGGER.warn("{}: Processor thread {} timed out, working for {} msecs",
                                             getName(),
                                             pt.getName(),

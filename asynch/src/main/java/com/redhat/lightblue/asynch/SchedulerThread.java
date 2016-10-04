@@ -59,19 +59,25 @@ public class SchedulerThread extends AbstractAsynchProcessorThread {
                 nActive++;
             }
         }
+        return nActive;
     }
 
     @Override
     protected void process() {
-        AsynchronousExecutionSupport async=lightblueFactory.getFactory().getAsynchronousExecutionSupport();
-        if(async==null)
-            throw new RuntimeException("No asynchronous execution support");
+        AsynchronousExecutionSupport async;
+        try {
+            async=lightblueFactory.getFactory().getAsynchronousExecutionSupport();
+            if(async==null)
+                throw new RuntimeException("No asynchronous execution support");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         while(!isStopRequested()) {
             synchronized(this) {
                 status=Status.working;
                 workStartTime=new Date();
             }
-            while(getNumActiveThreads()<cfg.getMaxThreads()) {            
+            while(getNumActiveThreads()<cfg.getMaxProcessorThreads()) {            
                 try {
                     AsynchronousJob job=async.getAndLockNextAsynchronousJob();
                     if(job!=null) {

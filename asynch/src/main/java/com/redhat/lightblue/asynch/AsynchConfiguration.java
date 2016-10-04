@@ -19,5 +19,32 @@
 package com.redhat.lightblue.asynch;
 
 public class AsynchConfiguration {
+
+    private long schedulerTimeoutMsecs;
+    private long processorTimeoutMsecs;
+    private int maxProcessorThreads;
     
+    public long getSchedulerTimeoutMsecs() {
+        return schedulerTimeoutMsecs;
+    }
+    
+    public void setSchedulerTimeoutMsecs(long i) {
+        schedulerTimeoutMsecs=i;
+    }
+
+    public long getProcessorTimeoutMsecs() {
+        return processorTimeoutMsecs;
+    }
+    
+    public void setProcessorTimeoutMsecs(long i) {
+        processorTimeoutMsecs=i;
+    }
+
+    public int getMaxProcessorThreads() {
+        return maxProcessorThreads;
+    }
+
+    public void setMaxProcessorThreads(int i) {
+        maxProcessorThreads=i;
+    }
 }
