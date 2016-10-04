@@ -57,8 +57,6 @@ import com.redhat.lightblue.crud.BulkResponse;
  * </pre>
  */
 public class AsynchResponse extends JsonObject {
-    public enum AsynchStatus { scheduled, executing, completed, timedout };
-
     private String jobId;
     private Response response;
     private BulkResponse bulkResponse;

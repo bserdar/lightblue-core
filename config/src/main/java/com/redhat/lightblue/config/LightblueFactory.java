@@ -48,6 +48,8 @@ import com.redhat.lightblue.crud.valuegenerators.GeneratedFieldInterceptor;
 import com.redhat.lightblue.extensions.ExtensionSupport;
 import com.redhat.lightblue.extensions.synch.Locking;
 import com.redhat.lightblue.extensions.synch.LockingSupport;
+import com.redhat.lightblue.extensions.asynch.AsynchronousExecutionSupport;
+import com.redhat.lightblue.extensions.asynch.AsynchronousExecutionConfiguration;
 import com.redhat.lightblue.mediator.Mediator;
 import com.redhat.lightblue.metadata.EntityInfo;
 import com.redhat.lightblue.metadata.EntityMetadata;
@@ -118,6 +120,7 @@ public final class LightblueFactory implements Serializable {
             throws ClassNotFoundException, IllegalAccessException, InvocationTargetException, IOException, NoSuchMethodException, InstantiationException {
         if (mediator == null) {
             mediator = new Mediator(getMetadata(), getFactory());
+            injectDependencies(mediator);
         }
     }
 
@@ -165,12 +168,34 @@ public final class LightblueFactory implements Serializable {
                 injectDependencies(controller);
                 f.addCRUDController(x.getBackend(), controller);
             }
+            AsynchronousExecutionConfiguration cfg=f.getAsynchronousExecutionConfiguration();
+            if(cfg!=null) {
+                if(cfg.getBackend()!=null) {
+                    CRUDController controller=f.getCRUDController(cfg.getBackend());
+                    if(controller==null)
+                        throw new RuntimeException("No backend named "+cfg.getBackend());
+                    if(!(controller instanceof AsynchronousExecutionSupport))
+                        throw new  RuntimeException("Backend "+cfg.getBackend()+
+                                                    " does not support asynchronous execution scheduling");
+                    f.setAsynchronousExecutionSupport((AsynchronousExecutionSupport)controller);
+                } else {
+                    try {
+                        f.setAsynchronousExecutionSupport(cfg.getSchedulerClass().newInstance());
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                injectDependencies(f.getAsynchronousExecutionSupport());
+            }
             // Make sure we assign factory after it is initialized. (factory is volatile, there's a memory barrier here)
+            
             factory = f;
+            injectDependencies(factory);
         }
     }
 
-    private synchronized void initializeMetadata(Factory factory) throws IOException, ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    
+        private synchronized void initializeMetadata(Factory factory) throws IOException, ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
         if (metadata == null) {
             LOGGER.debug("Initializing metadata");
 
@@ -371,3 +396,5 @@ public final class LightblueFactory implements Serializable {
     }
 
 }
+
+

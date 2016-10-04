@@ -107,6 +107,16 @@ public class Mediator {
     }
 
     /**
+     * Copy constructor. Main purpose of this is to implement mediator
+     * subclasses that customize certain behavior, and use an existing
+     * instance of a mediator as a template.
+     */
+    public Mediator(Mediator source) {
+        this.metadata=source.metadata;
+        this.factory=source.factory;
+    }
+
+    /**
      * Inserts data
      *
      * @param req Insertion request
@@ -639,37 +649,13 @@ public class Mediator {
         }
     }
 
-    private AsynchronousExecutionSupport getAsynch() {
-        AsynchronousExecutionConfiguration cfg=factory.getAsynchronousExecutionConfiguration();
-        if(cfg!=null) {
-            // We are scheduling it
-            AsynchronousExecutionSupport asynch;
-            if(cfg.getBackend()!=null) {
-                CRUDController controller=factory.getCRUDController(cfg.getBackend());
-                if(controller==null)
-                    throw new RuntimeException("No backend named "+cfg.getBackend());
-                if(!(controller instanceof AsynchronousExecutionSupport))
-                    throw new  RuntimeException("Backend "+cfg.getBackend()+" does not support asynchronous execution scheduling");
-                asynch=(AsynchronousExecutionSupport)controller;
-            } else {
-                try {
-                    asynch=cfg.getSchedulerClass().newInstance();
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            return asynch;
-        }
-        return null;
-    }
-
     /**
      * Submit a request for asynchronous execution
      */
     public AsynchResponse submitAsynchRequest(AsynchRequest request) {
         AsynchResponse response;
         try {
-            AsynchronousExecutionSupport aes=getAsynch();
+            AsynchronousExecutionSupport aes=factory.getAsynchronousExecutionSupport();
             if(aes!=null) {
                 response=aes.scheduleAsynchronousExecution(request);
             } else {
@@ -692,7 +678,7 @@ public class Mediator {
         LOGGER.debug("getAsynchResponse start");
         AsynchResponse response;
         try {
-            AsynchronousExecutionSupport asynch=getAsynch();
+            AsynchronousExecutionSupport asynch=factory.getAsynchronousExecutionSupport();
             if(asynch!=null) {
                 response=asynch.getAsynchronousExecutionStatus(jobId);
             } else {

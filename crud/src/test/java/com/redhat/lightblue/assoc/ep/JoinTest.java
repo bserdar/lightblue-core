@@ -162,13 +162,15 @@ public class JoinTest extends AbstractJsonSchemaTest {
         FindRequest freq = new FindRequest();
         freq.setEntityVersion(new EntityVersion("test", "1"));
         OperationContext opctx = new OperationContext(freq,
-                null,
-                new Factory(),
-                CRUDOperation.FIND,
-                null,
-                null,
-                new HashSet<String>(),
-                null);
+                                                      null,
+                                                      new Factory(),
+                                                      CRUDOperation.FIND,
+                                                      null,
+                                                      null,
+                                                      new HashSet<String>(),
+                                                      null,
+                                                      null,
+                                                      false);
         ExecutionContext ctx = new ExecutionContext(opctx, Executors.newSingleThreadExecutor());
         StepResult<JoinTuple> result = join.getResults(ctx);
         Stream<JoinTuple> stream = result.stream();
@@ -209,13 +211,14 @@ public class JoinTest extends AbstractJsonSchemaTest {
         FindRequest freq = new FindRequest();
         freq.setEntityVersion(new EntityVersion("test", "1"));
         OperationContext opctx = new OperationContext(freq,
-                null,
-                new Factory(),
-                CRUDOperation.FIND,
-                null,
-                null,
-                new HashSet<String>(),
-                null);
+                                                      null,
+                                                      new Factory(),
+                                                      CRUDOperation.FIND,
+                                                      null,
+                                                      null,
+                                                      new HashSet<String>(),
+                                                      null,
+                                                      null,false);
         ExecutionContext ctx = new ExecutionContext(opctx, Executors.newSingleThreadExecutor());
         StepResult<JoinTuple> result = join.getResults(ctx);
         Stream<JoinTuple> stream = result.stream();

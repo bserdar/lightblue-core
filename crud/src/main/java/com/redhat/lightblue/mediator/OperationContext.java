@@ -22,6 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,12 +105,14 @@ public final class OperationContext extends CRUDOperationContext {
                             CRUDOperation op,
                             OperationContext ctx) {
         super(op,
-                request.getEntityVersion().getEntity(),
-                ctx.getFactory(),
-                ctx.getCallerRoles(),
-                ctx.getHookManager(),
-                request instanceof DocRequest ? JsonDoc.docList(((DocRequest) request).getEntityData()) : null,
-                request.getExecution());
+              request.getEntityVersion().getEntity(),
+              ctx.getFactory(),
+              ctx.getCallerRoles(),
+              ctx.getHookManager(),
+              request instanceof DocRequest ? JsonDoc.docList(((DocRequest) request).getEntityData()) : null,
+              request.getExecution(),
+              ctx.propertyMap,
+              ctx.isAsynch());
         this.request = request;
         this.metadata = ctx.metadata;
         this.resolver = ctx.resolver;
@@ -134,14 +137,18 @@ public final class OperationContext extends CRUDOperationContext {
                             DefaultMetadataResolver resolver,
                             List<DocCtx> docs,
                             Set<String> callerRoles,
-                            HookManager hookManager) {
+                            HookManager hookManager,
+                            Map<String,Object> propertyMap,
+                            boolean asynch) {
         super(CRUDOperation,
-                request.getEntityVersion().getEntity(),
-                factory,
-                docs,
-                callerRoles,
-                hookManager,
-                request.getExecution());
+              request.getEntityVersion().getEntity(),
+              factory,
+              docs,
+              callerRoles,
+              hookManager,
+              request.getExecution(),
+              propertyMap,
+              asynch);
 
         this.request = request;
         this.metadata = metadata;
@@ -160,13 +167,15 @@ public final class OperationContext extends CRUDOperationContext {
         // 'req'
 
         return new OperationContext(newReq,
-                metadata,
-                getFactory(),
-                CRUDOperation.FIND,
-                resolver,
-                new ArrayList<DocCtx>(),
-                getCallerRoles(),
-                getHookManager());
+                                    metadata,
+                                    getFactory(),
+                                    CRUDOperation.FIND,
+                                    resolver,
+                                    new ArrayList<DocCtx>(),
+                                    getCallerRoles(),
+                                    getHookManager(),
+                                    propertyMap,
+                                    isAsynch());
     }
 
     /**

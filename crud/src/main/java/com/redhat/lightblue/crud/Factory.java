@@ -38,6 +38,7 @@ import com.redhat.lightblue.hooks.CRUDHook;
 import com.redhat.lightblue.interceptor.InterceptorManager;
 
 import com.redhat.lightblue.extensions.asynch.AsynchronousExecutionConfiguration;
+import com.redhat.lightblue.extensions.asynch.AsynchronousExecutionSupport;
 
 import com.redhat.lightblue.crud.valuegenerators.GeneratorsRegistry;
 import com.redhat.lightblue.extensions.valuegenerator.ValueGeneratorSupport;
@@ -64,8 +65,9 @@ public class Factory implements Serializable {
     private JsonNodeFactory nodeFactory;
     private int bulkParallelExecutions = 3;
 
-    private AsynchronousExecutionConfiguration asynch;
-    
+    private AsynchronousExecutionConfiguration asynchCfg;
+    private AsynchronousExecutionSupport asynch;
+
     /**
      * Adds a field constraint validator
      *
@@ -224,10 +226,18 @@ public class Factory implements Serializable {
     }
 
     public AsynchronousExecutionConfiguration getAsynchronousExecutionConfiguration() {
-        return asynch;
+        return asynchCfg;
     }
 
     public void setAsynchronousExecutionConfiguration(AsynchronousExecutionConfiguration asynch) {
+        this.asynchCfg=asynch;
+    }
+
+    public AsynchronousExecutionSupport getAsynchronousExecutionSupport() {
+        return asynch;
+    }
+
+    public void setAsynchronousExecutionSupport(AsynchronousExecutionSupport asynch) {
         this.asynch=asynch;
     }
 }
