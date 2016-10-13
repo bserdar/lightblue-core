@@ -185,6 +185,44 @@ public class Response extends JsonObject {
         return builder.build();
     }
 
+    public static Response fromJson(JsonNode node) {
+        Response ret=null;
+        if(node instanceof ObjectNode) {
+            ret=new Response();
+            JsonNode x=node.get(PROPERTY_STATUS);
+            if(x!=null)
+                ret.status=OperationStatus.valueOf(x.asText());
+            x=node.get(PROPERTY_MOD_COUNT);
+            if(x!=null)
+                ret.modifiedCount=x.asLong();
+            x=node.get(PROPERTY_MATCH_COUNT);
+            if(x!=null)
+                ret.matchCount=x.asLong();
+            x=node.get(PROPERTY_HOSTNAME);
+            if(x!=null)
+                ret.hostname=x.asText();
+           ret.entityData=node.get(PROPERTY_PROCESSED);
+           ArrayNode a=(ArrayNode)node.get(PROPERTY_DATA_ERRORS);
+           if(a!=null) {
+               for(Iterator<JsonNode> itr=a.elements();itr.hasNext();) {
+                   x=itr.next();
+                   if(x instanceof ObjectNode)
+                       ret.dataErrors.add(DataError.fromJson((ObjectNode)x));
+               }
+           }
+           a=(ArrayNode)node.get(PROPERTY_ERRORS);
+           if(a!=null) {
+               for(Iterator<JsonNode> itr=a.elements();itr.hasNext();) {
+                   x=itr.next();
+                   if(x instanceof ObjectNode)
+                       ret.errors.add(Error.fromJson((ObjectNode)x));
+               }
+           }
+            
+        }
+        return ret;
+    }
+
     public static class ResponseBuilder {
 
         private OperationStatus status;

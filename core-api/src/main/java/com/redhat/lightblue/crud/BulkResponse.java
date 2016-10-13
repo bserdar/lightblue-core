@@ -18,6 +18,8 @@
  */
 package com.redhat.lightblue.crud;
 
+import java.util.Iterator;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -58,5 +60,21 @@ public class BulkResponse extends AbstractBulkJsonObject<Response> {
         }
         node.put("responses", arr);
         return node;
+    }
+
+    public static BulkResponse fromJson(JsonNode node) {
+        BulkResponse ret=null;
+        if(node instanceof ObjectNode) {
+            ArrayNode arr=(ArrayNode)node.get("responses");
+            if(arr!=null) {
+                for(Iterator<JsonNode> itr=arr.elements();itr.hasNext();) {
+                    JsonNode entry=itr.next();
+                    if(entry instanceof ObjectNode) {
+                        ret.entries.add(Response.fromJson((ObjectNode)entry));
+                    }
+                }
+            }
+        }
+        return ret;
     }
 }
