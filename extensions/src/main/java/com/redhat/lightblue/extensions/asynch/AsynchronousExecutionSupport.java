@@ -28,6 +28,8 @@ import com.redhat.lightblue.extensions.Extension;
  */
 public interface AsynchronousExecutionSupport extends Extension {
 
+    public static final String ASYNCH_JOBID_PROPERTY="asynch:jobid";
+
     /**
      * Schedule execution of a request
      *

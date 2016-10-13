@@ -47,6 +47,7 @@ public class AsynchronousJob {
     public SingleRequestData singleData;
     public BulkRequestData bulkData;
     public int priority;
+    public Date createdTime;
     public Date scheduledTime;
     public Date executionStartTime;
     public Date completionTime;

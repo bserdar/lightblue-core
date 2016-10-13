@@ -41,6 +41,7 @@ import com.redhat.lightblue.mediator.Mediator;
 import com.redhat.lightblue.mediator.OperationContext;
 
 import com.redhat.lightblue.extensions.asynch.AsynchronousJob;
+import com.redhat.lightblue.extensions.asynch.AsynchronousExecutionSupport;
 
 /**
  * This class contains the logic that processes an asynchronous request
@@ -66,13 +67,14 @@ public class RequestProcessor {
         protected OperationContext newCtx(Request request, CRUDOperation CRUDOperation) {
             OperationContext ctx=super.newCtx(request,CRUDOperation);
             ctx.setAsynch(true);
+            ctx.setProperty(AsynchronousExecutionSupport.ASYNCH_JONID_PROPERTY,jobId);
             return ctx;
         }        
     }
     
     public RequestProcessor(Mediator mediator,AsynchronousJob job,String processorId) {
         this.job=job;
-        this.mediator=new AsyncMediator(mediator);
+        this.mediator=new AsyncMediator(mediator,job.jobId);
         this.processorId=processorId;
     }
 
