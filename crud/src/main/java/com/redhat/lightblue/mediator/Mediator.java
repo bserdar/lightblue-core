@@ -35,7 +35,7 @@ import com.redhat.lightblue.OperationStatus;
 import com.redhat.lightblue.Request;
 import com.redhat.lightblue.Response;
 import com.redhat.lightblue.ExecutionOptions;
-import com.redhat.lightblue.AsynchResponse;;
+import com.redhat.lightblue.AsynchResponse;
 import com.redhat.lightblue.AsynchRequest;
 import com.redhat.lightblue.crud.BulkRequest;
 import com.redhat.lightblue.crud.BulkResponse;

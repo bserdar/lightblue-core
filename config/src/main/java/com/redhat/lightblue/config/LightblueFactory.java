@@ -33,6 +33,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.redhat.lightblue.Request;
+import com.redhat.lightblue.AsynchRequest;
 import com.redhat.lightblue.crud.BulkRequest;
 import com.redhat.lightblue.crud.CRUDController;
 import com.redhat.lightblue.crud.CrudConstants;
@@ -294,6 +295,9 @@ public final class LightblueFactory implements Serializable {
                 tx.registerTranslation(BulkRequest.class,
                         new JsonTranslator.StaticFactoryMethod(BulkRequest.class, "fromJson", ObjectNode.class),
                         "json-schema/bulkRequest.json");
+                tx.registerTranslation(AsynchRequest.class,
+                        new JsonTranslator.StaticFactoryMethod(AsynchRequest.class, "fromJson", ObjectNode.class),
+                        "json-schema/asynchRequest.json");
             } catch (RuntimeException re) {
                 throw re;
             } catch (Exception e) {

@@ -93,9 +93,13 @@ public abstract class Request extends JsonObject {
     @Override
     public JsonNode toJson() {
         ObjectNode node = getFactory().objectNode();
-        node.put("entity", entityVersion.getEntity());
-        if (entityVersion.getVersion() != null) {
-            node.put("entityVersion", entityVersion.getVersion());
+        if(entityVersion!=null) {
+            if(entityVersion.getEntity()!=null) {
+                node.put("entity", entityVersion.getEntity());
+            }
+            if (entityVersion.getVersion() != null) {
+                node.put("entityVersion", entityVersion.getVersion());
+            }
         }
         if (client != null) {
             node.set("client", client.toJson());

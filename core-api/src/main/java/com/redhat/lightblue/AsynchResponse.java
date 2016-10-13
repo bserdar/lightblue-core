@@ -30,7 +30,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 
 import com.redhat.lightblue.util.JsonObject;
 import com.redhat.lightblue.util.Constants;
-import com.redhat.lightblue.util.Error;;
+import com.redhat.lightblue.util.Error;
 
 import com.redhat.lightblue.crud.BulkResponse;
 

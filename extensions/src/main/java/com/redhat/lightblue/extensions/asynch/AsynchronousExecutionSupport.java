@@ -19,7 +19,7 @@
 package com.redhat.lightblue.extensions.asynch;
 
 import com.redhat.lightblue.AsynchRequest;
-import com.redhat.lightblue.AsynchResponse;;
+import com.redhat.lightblue.AsynchResponse;
 
 import com.redhat.lightblue.extensions.Extension;
 
