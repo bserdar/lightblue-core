@@ -27,7 +27,7 @@ import com.redhat.lightblue.extensions.asynch.AsynchronousJob;
 
 public class SchedulerThread extends AbstractAsynchProcessorThread {
 
-    private final AsynchConfiguration cfg;
+    private final AsynchProcessorConfiguration cfg;
     private final ThreadGroup group;
     private final LightblueFactory lightblueFactory;
 
@@ -36,7 +36,7 @@ public class SchedulerThread extends AbstractAsynchProcessorThread {
     private Status status=Status.waiting;
     private Date workStartTime;
     
-    public SchedulerThread(AsynchConfiguration cfg,LightblueFactory lbf,ThreadGroup group) {
+    public SchedulerThread(AsynchProcessorConfiguration cfg,LightblueFactory lbf,ThreadGroup group) {
         super("SchedulerThread");
         this.cfg=cfg;
         this.group=group;

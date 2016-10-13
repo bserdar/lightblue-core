@@ -31,6 +31,7 @@ public class AsynchronousExecutionConfiguration implements JsonInitializable, Se
     private String backend;
     private Class<? extends AsynchronousExecutionSupport> schedulerClass;
     private ObjectNode options;
+    private ObjectNode processor;
 
     
     /**
@@ -74,6 +75,20 @@ public class AsynchronousExecutionConfiguration implements JsonInitializable, Se
     public void setOptions(ObjectNode node) {
         options = node;
     }
+    
+    /**
+     * The processor
+     */
+    public ObjectNode getProcessor() {
+        return processor;
+    }
+
+    /**
+     * The processor
+     */
+    public void setProcessor(ObjectNode node) {
+        processor=node;
+    }
 
     @Override
     public void initializeFromJson(JsonNode node) {
@@ -90,6 +105,7 @@ public class AsynchronousExecutionConfiguration implements JsonInitializable, Se
                 if(backend!=null&&schedulerClass!=null)
                     throw new RuntimeException("Both backend and schedulerClass are given. Only one should be defined");
                 options = (ObjectNode) node.get("options");
+                processor = (ObjectNode) node.get("processor");
             }
         } catch (Exception e) {
             throw new RuntimeException(e);

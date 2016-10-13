@@ -31,11 +31,11 @@ public class RequestProcessorThread extends AbstractAsynchProcessorThread {
     private static AtomicInteger idCounter=new AtomicInteger(1);
 
     private final String processorId;
-    private final AsynchConfiguration cfg;
+    private final AsynchProcessorConfiguration cfg;
     private final LightblueFactory lightblueFactory;
     private final RequestProcessor processor;
 
-    public RequestProcessorThread(AsynchConfiguration cfg,
+    public RequestProcessorThread(AsynchProcessorConfiguration cfg,
                                   LightblueFactory lbf,
                                   ThreadGroup group,
                                   AsynchronousJob job) {

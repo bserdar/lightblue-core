@@ -24,10 +24,10 @@ public class DriverThread extends AbstractAsynchProcessorThread {
 
     private SchedulerThread schedulerThread=null;
     private ThreadGroup processors=new ThreadGroup("Processors");
-    private final AsynchConfiguration cfg;
+    private final AsynchProcessorConfiguration cfg;
     private final LightblueFactory lightblueFactory;
     
-    public DriverThread(AsynchConfiguration cfg,LightblueFactory lbf)
+    public DriverThread(AsynchProcessorConfiguration cfg,LightblueFactory lbf)
         throws Exception {
         super("DriverThread");
         this.cfg=cfg;
