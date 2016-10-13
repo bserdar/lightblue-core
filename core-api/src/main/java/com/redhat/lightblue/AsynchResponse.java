@@ -164,7 +164,7 @@ public class AsynchResponse extends JsonObject {
         ObjectNode node=factory.objectNode();
         if(response!=null) {
             node.set("response",response.toJson());
-        } else {
+        } else if(bulkResponse!=null) {
             node.set("bulkResponse",bulkResponse.toJson());
         }
         node.set("jobId",factory.textNode(jobId));

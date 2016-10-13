@@ -45,7 +45,7 @@ public class RequestProcessorThread extends AbstractAsynchProcessorThread {
         this.cfg=cfg;
         this.lightblueFactory=lbf;
         try {
-            processor=new RequestProcessor(lbf.getMediator(),job,processorId);
+            processor=new RequestProcessor(lbf,job,processorId);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

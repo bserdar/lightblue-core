@@ -35,6 +35,8 @@ import com.redhat.lightblue.crud.BulkResponse;
 import com.redhat.lightblue.crud.CRUDOperation;
 import com.redhat.lightblue.crud.CrudConstants;
 
+import com.redhat.lightblue.config.LightblueFactory;
+
 import com.redhat.lightblue.util.Error;
 
 import com.redhat.lightblue.mediator.Mediator;
@@ -49,7 +51,8 @@ import com.redhat.lightblue.extensions.asynch.AsynchronousExecutionSupport;
 public class RequestProcessor {
 
     private static final Logger LOGGER=LoggerFactory.getLogger(RequestProcessor.class);
-    
+
+    private final LightblueFactory factory;
     private final AsynchronousJob job;
     private final String processorId;
     private final Mediator mediator;
@@ -71,23 +74,34 @@ public class RequestProcessor {
             ctx.setAsynch(true);
             ctx.setProperty(AsynchronousExecutionSupport.ASYNCH_JOBID_PROPERTY,jobId);
             return ctx;
-        }        
+        }
     }
     
-    public RequestProcessor(Mediator mediator,AsynchronousJob job,String processorId) {
-        this.job=job;
-        this.mediator=new AsyncMediator(mediator,job.jobId);
-        this.processorId=processorId;
+    public RequestProcessor(LightblueFactory factory,AsynchronousJob job,String processorId) {
+        try {
+            this.job=job;
+            this.factory=factory;
+            this.mediator=new AsyncMediator(factory.getMediator(),job.jobId);
+            this.processorId=processorId;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public void processRequest() {
+    public void processRequest() {        
         LOGGER.debug("{}: Start processing {}",processorId,job);
-        if(!job.isBulkRequest()) {
-            job.singleData.response=processSingleRequest(job.singleData.request);
-        } else {
-            job.bulkData.response=processBulkRequest(job.bulkData.request);
+        try {
+            if(!job.isBulkRequest()) {
+                job.singleData.response=processSingleRequest(job.singleData.request);
+            } else {
+                job.bulkData.response=processBulkRequest(job.bulkData.request);
+            }
+            factory.getFactory().getAsynchronousExecutionSupport().completeJob(job);
+            
+            LOGGER.debug("{}: End processing {}",processorId,job.jobId);
+        } catch(Exception e) {
+            throw new RuntimeException(e);
         }
-        LOGGER.debug("{}: End processing {}",processorId,job.jobId);
     }
     
     protected Response processSingleRequest(Request request) {

@@ -149,6 +149,7 @@ public class FindRequest extends Request implements WithQuery, WithProjection, W
      */
     public static FindRequest fromJson(ObjectNode node) {
         FindRequest req=new FindRequest();
+        req.parse(node);
         JsonNode x = node.get("query");
         if (x != null) {
             req.query = QueryExpression.fromJson(x);

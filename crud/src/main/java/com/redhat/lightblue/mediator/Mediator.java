@@ -97,8 +97,8 @@ public class Mediator {
 
     private static final Path OBJECT_TYPE_PATH = new Path("objectType");
 
-    private final Metadata metadata;
-    private final Factory factory;
+    protected final Metadata metadata;
+    protected final Factory factory;
 
     public Mediator(Metadata md,
                     Factory factory) {

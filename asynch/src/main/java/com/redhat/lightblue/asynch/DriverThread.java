@@ -38,6 +38,7 @@ public class DriverThread extends AbstractAsynchProcessorThread {
 
     @Override
     protected void process() {
+        LOGGER.info("Driver thread starting");
         while(!isStopRequested()) {
             try {
                 ping();
