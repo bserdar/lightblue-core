@@ -62,7 +62,7 @@ public interface AsynchronousExecutionSupport extends Extension {
     AsynchronousJob getAndLockNextAsynchronousJob();
 
     /**
-     * Update an asymchronous job
+     * Sets job results. Only the jobId, status and single/bulk response fields are set
      */
-    void updateAsynchronousJob(AsynchronousJob job);
+    void completeJob(AsynchronousJob jobData);
 }

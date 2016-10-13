@@ -59,15 +59,17 @@ public class RequestProcessor {
      * asynchronous execution flags to it
      */
     private static class AsyncMediator extends Mediator {
-        public AsyncMediator(Mediator source) {
+        private final String jobId;
+        public AsyncMediator(Mediator source,String jobId) {
             super(source);
+            this.jobId=jobId;
         }
 
         @Override
         protected OperationContext newCtx(Request request, CRUDOperation CRUDOperation) {
             OperationContext ctx=super.newCtx(request,CRUDOperation);
             ctx.setAsynch(true);
-            ctx.setProperty(AsynchronousExecutionSupport.ASYNCH_JONID_PROPERTY,jobId);
+            ctx.setProperty(AsynchronousExecutionSupport.ASYNCH_JOBID_PROPERTY,jobId);
             return ctx;
         }        
     }
