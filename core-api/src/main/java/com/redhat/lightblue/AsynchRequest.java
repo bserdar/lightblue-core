@@ -52,6 +52,7 @@ public class AsynchRequest extends JsonObject {
     private final BulkRequest bulkRequest;
     private Date executeAfter;
     private int priority;
+    // TTL: how long should the results of the job live?
 
     /**
      * Creates an asynchronous request based on the given request
