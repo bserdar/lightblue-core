@@ -32,6 +32,8 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.redhat.lightblue.query.Sort;
+
 import com.redhat.lightblue.metadata.Indexes;
 import com.redhat.lightblue.metadata.Index;
 import com.redhat.lightblue.metadata.CompositeMetadata;
@@ -66,6 +68,16 @@ public class IndexedFieldScorer implements QueryPlanScorer, Serializable {
     private static final long serialVersionUID = 1l;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(IndexedFieldScorer.class);
+
+    private final Sort sort;
+
+    public IndexedFieldScorer(Sort sort) {
+        this.sort=sort;
+    }
+
+    public IndexedFieldScorer() {
+        this(null);
+    }
 
     @Override
     public QueryPlanData newDataInstance() {
