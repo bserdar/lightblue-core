@@ -43,7 +43,7 @@ public class GetQueryIndexInfo extends QueryIteratorSkeleton<IndexInfo> {
      *
      * A query of the form
      *
-     ( field1 = value1 or field1 = value2
+     * field1 = value1 or field1 = value2
      *
      * would create an entry {field1: { [value1,value1], [value2,vakue2] }
      *
@@ -60,21 +60,49 @@ public class GetQueryIndexInfo extends QueryIteratorSkeleton<IndexInfo> {
      *    field n-tuple : list< Range < value tuple > >
      */
 
-    public static class FieldTuple extends List<Path> { }
-
-    
-    public static class ValueRange {
-        public Value from;
-        public Value to;
+    public static class FieldTuple extends HashSet<Path> {
+        FieldTuple() {}
+        
+        FieldTuple(Path p) {
+            add(p);
+        }
     }
 
-    public static class SingleFieldIndexInfo {
-        public Path field;
-        public List<ValueRange> valueRanges;
+    public static class ValueTuple extends HashMap<Path,Value> {
+    }
+
+
+    public static class ValueRange  {
+        public final ValueTuple from=new ValueTuple();
+        public final ValueTuple to=new ValueTuple();
+
+        /**
+         * Ctor for a range for a single field
+         */
+        ValueRange(Path path,Value from,Value to) {
+            this.from.put(path,from);
+            this.to.put(path,to);
+        }
+    }
+
+    public static class FieldTupleIndexInfo {
+        public FieldTuple fields;
+        public final List<ValueRange> values=new ArrayList<>();
+
+        FieldTupleIndexInfo(FieldTuple fields,ValueRange value) {
+            this.fields=fields;
+            values.add(value);
+        }
+
+        /**
+         * Invert all ranges
+         */
+        void invert() {
+            
+        }
     }
     
-    public static class IndexInfo {
-        public final Map<Path,SingleFieldIndexInfo> singleFields=new HashMap<>();
+    public static class IndexInfo extends HashMap<FieldTuple,FieldTupleIndexInfo> {
 
         public IndexInfo() {}
 
@@ -82,30 +110,53 @@ public class GetQueryIndexInfo extends QueryIteratorSkeleton<IndexInfo> {
          * Index info for one field, with a single value
          */
         public IndexInfo(Path field,BinaryComparisonOperator op,Value value) {
-            FieldIndexInfo finfo=new FieldIndexInfo(field,op,value);
-            fields.put(finfo.field,finfo);
+            ValueRange range;
+            switch(op) {
+            case _eq:
+                range=new ValueRange(field,value,value);
+                break;
+                
+            case _neq:
+                range=null;
+                break;
+            case _lte:
+            case _lt:
+                range=new ValueRange(field,null,value);
+                break;
+                
+            case _gt:
+            case _gte:
+                range=new ValueRange(field,value,null);
+                break;
+            }
+            if(range!=null) {
+                FieldTuple ft=new FieldTuple(field);
+                put(ft,new FieldTupleIndexInfo(ft,range));
+            }
         }
 
         /**
          * Index info for one field, with a list of values
          */
         public IndexInfo(Path field,NaryRelationalOperator op,List<Value> values) {
-            FieldIndexInfo finfo=new FieldIndexInfo(field,op,values);
-            fields.put(finfo.field,finfo);
+            if(op==NaryRelationalOperator._in) {
+                FieldTuple ft=new FieldTuple(field);
+                put(ft,new FieldTupleIndexInfo(ft,values.stream().map(v->new ValueRange(field,v,v)).collect(Collectors.toList())));
+            }
         }
 
         /**
          * Index info for one array field, with a list of values, for contains._any
          */
         public IndexInfo(Path field,ContainsOperator op,List<Value> values) {
-            FieldIndexInfo finfo=new FieldIndexInfo(field,op,values);
-            fields.put(finfo.field,finfo);
+            if(op==ContainsOperator._any||op==ContainsOperator._all) {
+                FieldTuple ft=new FieldTuple(field);
+                put(ft,new FieldTupleIndexInfo(ft,values.stream().map(v->new ValueRange(field,v,v)).collect(Collectors.toList())));
+            }
         }
 
         public IndexInfo invert() {
-            for(FieldIndexInfo f:fields.values())
-                f.invert();
-            return this;
+            values().stream().forEach(FieldTupleIndexInfo::invert);
         }
 
         public IndexInfo intersect(IndexInfo info) {
