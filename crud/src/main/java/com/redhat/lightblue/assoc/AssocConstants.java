@@ -24,6 +24,7 @@ public final class AssocConstants {
     public static final String ERR_UNRELATED_ENTITY_Q = "assoc:unsupported:QueryForUnrelatedEntities";
     public static final String ERR_MORE_THAN_TWO_Q = "assoc:unsupported:QueryForMoreThanTwoEntities";
     public static final String ERR_REWRITE = "assoc:QueryRewriteError";
+    public static final String ERR_INDEX_ANALYZE = "assoc:IndexAnalysisError";
     public static final String ERR_ARRAY_EXPECTED = "assoc:ArrayFieldExpected";
     public static final String ERR_CANNOT_FIND_FIELD = "assoc:NoField";
     public static final String ERR_INVALID_QUERYPLAN = "assoc:InvalidQueryPlan";

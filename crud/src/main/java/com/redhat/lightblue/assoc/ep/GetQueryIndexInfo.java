@@ -18,156 +18,37 @@
  */
 package com.redhat.lightblue.assoc.ep;
 
-import java.util.Map;
-import java.util.HashMap;
+import java.util.List;
+
+import com.redhat.lightblue.assoc.QueryFieldInfo;
+import com.redhat.lightblue.assoc.AssocConstants;
 
 import com.redhat.lightblue.query.*;
 
 import com.redhat.lightblue.util.Path;
+import com.redhat.lightblue.util.Error;
 
+/**
+ * Builds a set of paths from which to build a composite index for
+ * efficient retrieval of the query
+ */
 public class GetQueryIndexInfo extends QueryIteratorSkeleton<IndexInfo> {
 
-    /**
-     * We need a data structure to keep values and ranges of values
-     * for fields and tuples. For instance, a query of the form
-     *
-     *  field = value
-     *
-     * would create an entry { field: [value,value] }
-     *
-     * A query of the form
-     *
-     *  field1 = value1 and field2 = value2
-     *
-     * would create an entry {field1: [value1,value1] , field2: [value2, value2] }
-     *
-     * A query of the form
-     *
-     * field1 = value1 or field1 = value2
-     *
-     * would create an entry {field1: { [value1,value1], [value2,vakue2] }
-     *
-     * If several predicates are under an array elemMatch:
-     *
-     *   array: a, elemMatch: { field1=value1 and field2=value2 }
-     *
-     * we get
-     *
-     *  { [ a.field1, a.field2 ]: { [ [value1,value2] , [value1,value2] ] }
-     *
-     * So the most general case is:
-     * 
-     *    field n-tuple : list< Range < value tuple > >
-     */
-
-    public static class FieldTuple extends HashSet<Path> {
-        FieldTuple() {}
-        
-        FieldTuple(Path p) {
-            add(p);
-        }
-    }
-
-    public static class ValueTuple extends HashMap<Path,Value> {
-    }
-
-
-    public static class ValueRange  {
-        public final ValueTuple from=new ValueTuple();
-        public final ValueTuple to=new ValueTuple();
-
-        /**
-         * Ctor for a range for a single field
-         */
-        ValueRange(Path path,Value from,Value to) {
-            this.from.put(path,from);
-            this.to.put(path,to);
-        }
-    }
-
-    public static class FieldTupleIndexInfo {
-        public FieldTuple fields;
-        public final List<ValueRange> values=new ArrayList<>();
-
-        FieldTupleIndexInfo(FieldTuple fields,ValueRange value) {
-            this.fields=fields;
-            values.add(value);
-        }
-
-        /**
-         * Invert all ranges
-         */
-        void invert() {
-            
-        }
+    private final List<QueryFieldInfo> fieldInfo;
+    
+    public GetQueryIndexInfo(List<QueryFieldInfo> fields) {
+        this.fieldInfo=fields;
     }
     
-    public static class IndexInfo extends HashMap<FieldTuple,FieldTupleIndexInfo> {
-
-        public IndexInfo() {}
-
-        /**
-         * Index info for one field, with a single value
-         */
-        public IndexInfo(Path field,BinaryComparisonOperator op,Value value) {
-            ValueRange range;
-            switch(op) {
-            case _eq:
-                range=new ValueRange(field,value,value);
-                break;
-                
-            case _neq:
-                range=null;
-                break;
-            case _lte:
-            case _lt:
-                range=new ValueRange(field,null,value);
-                break;
-                
-            case _gt:
-            case _gte:
-                range=new ValueRange(field,value,null);
-                break;
-            }
-            if(range!=null) {
-                FieldTuple ft=new FieldTuple(field);
-                put(ft,new FieldTupleIndexInfo(ft,range));
+    private QueryFieldInfo findFieldInfo(Path field, QueryExpression clause) {
+        for (QueryFieldInfo fi : fieldInfo) {
+            if (fi.getClause() == clause) {
+                if (fi.getFieldNameInClause().equals(field)) {
+                    return fi;
+                }
             }
         }
-
-        /**
-         * Index info for one field, with a list of values
-         */
-        public IndexInfo(Path field,NaryRelationalOperator op,List<Value> values) {
-            if(op==NaryRelationalOperator._in) {
-                FieldTuple ft=new FieldTuple(field);
-                put(ft,new FieldTupleIndexInfo(ft,values.stream().map(v->new ValueRange(field,v,v)).collect(Collectors.toList())));
-            }
-        }
-
-        /**
-         * Index info for one array field, with a list of values, for contains._any
-         */
-        public IndexInfo(Path field,ContainsOperator op,List<Value> values) {
-            if(op==ContainsOperator._any||op==ContainsOperator._all) {
-                FieldTuple ft=new FieldTuple(field);
-                put(ft,new FieldTupleIndexInfo(ft,values.stream().map(v->new ValueRange(field,v,v)).collect(Collectors.toList())));
-            }
-        }
-
-        public IndexInfo invert() {
-            values().stream().forEach(FieldTupleIndexInfo::invert);
-        }
-
-        public IndexInfo intersect(IndexInfo info) {
-        }
-
-        public IndexInfo union(IndexInfo info) {
-        }
-
-        public IndexInfo prepend(Path p) {
-            
-        }
+        throw Error.get(AssocConstants.ERR_INDEX_ANALYZE, field.toString() + "@" + clause.toString());
     }
 
     /**
@@ -187,58 +68,74 @@ public class GetQueryIndexInfo extends QueryIteratorSkeleton<IndexInfo> {
 
     @Override
     protected IndexInfo itrValueComparisonExpression(ValueComparisonExpression q, Path context) {
-        // _neq is useless for index use
-        if(q.getOp()==BinaryComparisonOperator._neq)
-            return new IndexInfo();
-        else
-            return new IndexInfo(q.getField(),q.getOp(),q.getValue());
+        IndexInfo info=new IndexInfo();
+        if(q.getOp()==BinaryComparisonOperator._neq) {
+            return info;
+        } else {
+            QueryFieldInfo finfo=findFieldInfo(q.getField(),q);
+            info.add(finfo.getEntityRelativeFieldNameWithContext());
+        }
+        return info;
     }
-        
-
+    
     @Override
     protected IndexInfo itrAllMatchExpression(AllMatchExpression q, Path context) {
         return new IndexInfo();
     }
-
+    
     @Override
     protected IndexInfo itrRegexMatchExpression(RegexMatchExpression q, Path context) {
-        return new IndexInfo();
+        String pattern=q.getRegex();
+        if(pattern.length()>0 && pattern.charAt(0)=='^') {
+            QueryFieldInfo finfo=findFieldInfo(q.getField(),q);
+            return new IndexInfo(finfo.getEntityRelativeFieldNameWithContext());
+        } else {
+            return new IndexInfo();
+        }
     }
 
     @Override
     protected IndexInfo itrNaryValueRelationalExpression(NaryValueRelationalExpression q, Path context) {
-        return new IndexInfo(q.getField(),q.getOp(),q.getValues());
+        if(q.getOp()==NaryRelationalOperator._in) {
+            QueryFieldInfo finfo=findFieldInfo(q.getField(),q);
+            return new IndexInfo(finfo.getEntityRelativeFieldNameWithContext());
+        } else
+            return new IndexInfo();
     }
-
+    
     @Override
     protected IndexInfo itrArrayContainsExpression(ArrayContainsExpression q, Path context) {
-        if(q.getOp()==ContainsOperator._any)
-            return new IndexInfo(q.getArray(),q.getOp(),q.getValues());
-        else
-            reutrn new IndexInfo();
+        if(q.getOp()==ContainsOperator._any) {
+            QueryFieldInfo finfo=findFieldInfo(q.getArray(),q);
+            return new IndexInfo(finfo.getEntityRelativeFieldNameWithContext());
+        } else
+            return new IndexInfo();
     }
-
+    
     @Override
     protected IndexInfo itrUnaryLogicalExpression(UnaryLogicalExpression q, Path context) {
-        return iterate(q.getQuery(),context).invert();
+        return iterate(q.getQuery(),context);
     }
-
+    
     @Override
     protected IndexInfo itrNaryLogicalExpression(NaryLogicalExpression q, Path context) {
         IndexInfo ret=new IndexInfo();
-        for(QuryExpression x:q.getQueries()) {
-            if(q.getOp()==NaryLogicalOperator._and)
-                ret.intersect(iterate(x,context));
-            else
-                ret.union(iterate(x,context));
+        if(q.getOp()==NaryLogicalOperator._or) {
+            // Keep it simple: X or Y means we need to scan two indexes. Lets not do that
+            return new IndexInfo();
+        } else {
+            // X and Y means we need an index scanning both
+            // but there can be sub-expressions with ORs in them, and they will return empty IndexInfo
+            // So, we collect only nonempty indexinfos, and create an index from them
+            for(QueryExpression query:q.getQueries()) {
+                ret.addAll(super.iterate(query,context));
+            }
         }
         return ret;
     }
-
+    
     @Override
     protected IndexInfo itrArrayMatchExpression(ArrayMatchExpression q, Path context) {
-        IndexInfo info=iterate(q.getElemMatch(),context);
-        info.prepend(q.getArray());
-        return info;
+        return iterate(q.getElemMatch(), new Path(new Path(context, q.getArray()), Path.ANYPATH));
     }
 }
