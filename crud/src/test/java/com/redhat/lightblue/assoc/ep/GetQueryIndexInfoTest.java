@@ -1,6 +1,7 @@
 package com.redhat.lightblue.assoc.ep;
 
 import java.util.List;
+import java.util.Set;
 
 import org.junit.Test;
 import org.junit.Assert;
@@ -78,6 +79,40 @@ public class GetQueryIndexInfoTest extends AbstractJsonSchemaTest {
         return Projection.fromJson(JsonUtils.json(s.replace('\'', '\"')));
     }
 
+    private boolean containsField(IndexInfo ii,Path p) {
+        Set<IndexInfo.TermIndex> index=ii.getIndexes();
+        for(IndexInfo.TermIndex i:index)
+            if(i instanceof IndexInfo.FieldIndex)
+                if( ((IndexInfo.FieldIndex)i).field.equals(p))
+                    return true;
+        return false;
+    }
+
+    private boolean containsArray(IndexInfo ii,Path array,Path...fields) {
+        Set<IndexInfo.TermIndex> index=ii.getIndexes();
+        for(IndexInfo.TermIndex i:index)
+            if(i instanceof IndexInfo.ArrayIndex) {
+                IndexInfo.ArrayIndex a=(IndexInfo.ArrayIndex)i;
+                if(a.array.equals(array)) {
+                    if(fields.length==a.indexes.size()) {
+                        for(Path f:fields) {
+                            boolean found=false;
+                            for(IndexInfo.FieldIndex fi:a.indexes)
+                                if(fi.field.equals(f)) {
+                                    found=true;
+                                    break;
+                                }
+                            if(!found)
+                                return false;
+                        }
+                        return true;
+                    }
+                }
+                return false;
+            }
+        return false;
+    }
+
     @Test
     public void testBasicQuery() throws Exception {
         GMD gmd = new GMD(projection("{'field':'obj1.c','include':1}"), null);
@@ -90,7 +125,7 @@ public class GetQueryIndexInfoTest extends AbstractJsonSchemaTest {
         IndexInfo info=new GetQueryIndexInfo(list).iterate(q);
         System.out.println(info);
         Assert.assertEquals(1,info.size());
-        Assert.assertTrue(info.contains(new Path("field1")));
+        Assert.assertTrue(containsField(info,new Path("field1")));
     }
 
     @Test
@@ -105,8 +140,8 @@ public class GetQueryIndexInfoTest extends AbstractJsonSchemaTest {
         IndexInfo info=new GetQueryIndexInfo(list).iterate(q);
         System.out.println(info);
         Assert.assertEquals(2,info.size());
-        Assert.assertTrue(info.contains(new Path("field1")));
-        Assert.assertTrue(info.contains(new Path("b_ref")));
+        Assert.assertTrue(containsField(info,new Path("field1")));
+        Assert.assertTrue(containsField(info,new Path("b_ref")));
     }
 
     @Test
@@ -133,8 +168,7 @@ public class GetQueryIndexInfoTest extends AbstractJsonSchemaTest {
         List<QueryFieldInfo> list = pq.getFieldInfo();
         IndexInfo info=new GetQueryIndexInfo(list).iterate(q);
         System.out.println(info);
-        Assert.assertEquals(2,info.size());
-        Assert.assertTrue(info.contains(new Path("level1.arr1.*.b_ref")));
-        Assert.assertTrue(info.contains(new Path("level1.arr1.*.field")));
+        Assert.assertEquals(1,info.size());
+        Assert.assertTrue(containsArray(info,new Path("level1.arr1"),new Path("level1.arr1.*.b_ref"),new Path("level1.arr1.*.field")));
    }
 }

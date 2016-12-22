@@ -128,7 +128,7 @@ public class GetQueryIndexInfo extends QueryIteratorSkeleton<IndexInfo> {
             // but there can be sub-expressions with ORs in them, and they will return empty IndexInfo
             // So, we collect only nonempty indexinfos, and create an index from them
             for(QueryExpression query:q.getQueries()) {
-                ret.addAll(super.iterate(query,context));
+                ret.addFields(super.iterate(query,context));
             }
         }
         return ret;
@@ -136,6 +136,8 @@ public class GetQueryIndexInfo extends QueryIteratorSkeleton<IndexInfo> {
     
     @Override
     protected IndexInfo itrArrayMatchExpression(ArrayMatchExpression q, Path context) {
-        return iterate(q.getElemMatch(), new Path(new Path(context, q.getArray()), Path.ANYPATH));
+        QueryFieldInfo finfo=findFieldInfo(q.getArray(),q);
+        return new IndexInfo(finfo.getEntityRelativeFieldNameWithContext(),
+                             iterate(q.getElemMatch(), new Path(new Path(context, q.getArray()), Path.ANYPATH)));
     }
 }
