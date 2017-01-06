@@ -21,6 +21,8 @@ package com.redhat.lightblue.assoc.ep;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.redhat.lightblue.query.QueryExpression;
+
 import com.redhat.lightblue.util.Path;
 
 /**
@@ -36,11 +38,16 @@ public class IndexInfo {
 
     public interface TermIndex {}
 
+    /**
+     * Each fieldIndex entry denotes a field to be indexed
+     */
     public static class FieldIndex implements TermIndex {
         public final Path field;
+        public final QueryExpression clause;
 
-        public FieldIndex(Path field) {
+        public FieldIndex(QueryExpression clause,Path field) {
             this.field=field;
+            this.clause=clause;
         }
         
         @Override
@@ -62,13 +69,18 @@ public class IndexInfo {
         }
     }
 
+    /**
+     * The arrayIndex entry gives a set of fieldIndex entries that will be indexed as a tuple
+     */
     public static class ArrayIndex implements TermIndex {
         public final Set<FieldIndex> indexes;
         public final Path array;
+        public final QueryExpression clause;
 
-        public ArrayIndex(Path array,Set<FieldIndex> indexes) {
+        public ArrayIndex(QueryExpression clause,Path array,Set<FieldIndex> indexes) {
             this.array=array;
             this.indexes=indexes;
+            this.clause=clause;
         }
 
         @Override
@@ -93,18 +105,24 @@ public class IndexInfo {
     private final HashSet<TermIndex> indexes=new HashSet<>();
     
     IndexInfo() {}
-    IndexInfo(Path p) {add(new FieldIndex(p));}
-    IndexInfo(Path p,IndexInfo ii) {addArray(p,ii);}
+    IndexInfo(QueryExpression clause,Path p) {add(clause,p);}
+    IndexInfo(QueryExpression clause, Path p,IndexInfo ii) {addArray(clause,p,ii);}
 
     public Set<TermIndex> getIndexes() {
         return indexes;
     }
         
 
-    void add(Path p) {
-        add(new FieldIndex(p));
+    /**
+     * Adds a field index for the field p in the clause
+     */
+    void add(QueryExpression clause,Path p) {
+        add(new FieldIndex(clause,p));
     }
     
+    /**
+     * Adds a field index 
+     */
     void add(FieldIndex p) {
         indexes.add(p);
     }
@@ -115,17 +133,33 @@ public class IndexInfo {
                 indexes.add(ti);        
     }
 
-    void addArray(Path p,IndexInfo ii) {
-        HashSet<FieldIndex> findexes=new HashSet<>();
-        for(TermIndex ti:ii.indexes)
-            if(ti instanceof FieldIndex) {
-                if(((FieldIndex)ti).field.prefix(p.numSegments()).equals(p))
-                    findexes.add((FieldIndex)ti);
+    /**
+     * Adds an array index for the array p in clause. The index info
+     * ii contains the index info for the nested clauses
+     */
+    void addArray(QueryExpression clause,Path p,IndexInfo ii) {
+        // If the array has only one field, then we only need to get that field without the enclosing array
+        if(ii.indexes.size()==1) {
+            TermIndex ti=ii.indexes.iterator().next();
+            if(ti instanceof FieldIndex) { // No support for nested array indexes
+                if(((FieldIndex)ti).field.prefix(p.numSegments()).equals(p)) {
+                    // Field is really under this array
+                    add(clause,((FieldIndex)ti).field);
+                }
             }
-        if(!findexes.isEmpty())
-            indexes.add(new ArrayIndex(p,findexes));
+        } else if(ii.indexes.size()>1) {
+            // The array has more than one fields
+            HashSet<FieldIndex> findexes=new HashSet<>();
+            for(TermIndex ti:ii.indexes)
+                if(ti instanceof FieldIndex) {
+                    if(((FieldIndex)ti).field.prefix(p.numSegments()).equals(p))
+                        findexes.add((FieldIndex)ti);
+                }
+            if(!findexes.isEmpty())
+                indexes.add(new ArrayIndex(clause,p,findexes));
+        }
     }
-
+    
     @Override
     public String toString() {
         return indexes.toString();

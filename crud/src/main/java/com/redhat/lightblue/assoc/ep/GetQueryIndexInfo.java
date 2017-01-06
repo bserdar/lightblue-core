@@ -31,24 +31,13 @@ import com.redhat.lightblue.util.Error;
 /**
  * Builds a set of paths from which to build a composite index for
  * efficient retrieval of the query
+ *
+ * This class is tightly coupled with how DocIndex and GetIndedRanges works
  */
-public class GetQueryIndexInfo extends QueryIteratorSkeleton<IndexInfo> {
+class GetQueryIndexInfo extends IndexQueryProcessorBase<IndexInfo> {
 
-    private final List<QueryFieldInfo> fieldInfo;
-    
     public GetQueryIndexInfo(List<QueryFieldInfo> fields) {
-        this.fieldInfo=fields;
-    }
-    
-    private QueryFieldInfo findFieldInfo(Path field, QueryExpression clause) {
-        for (QueryFieldInfo fi : fieldInfo) {
-            if (fi.getClause() == clause) {
-                if (fi.getFieldNameInClause().equals(field)) {
-                    return fi;
-                }
-            }
-        }
-        throw Error.get(AssocConstants.ERR_INDEX_ANALYZE, field.toString() + "@" + clause.toString());
+        super(fields);
     }
 
     /**
@@ -73,7 +62,7 @@ public class GetQueryIndexInfo extends QueryIteratorSkeleton<IndexInfo> {
             return info;
         } else {
             QueryFieldInfo finfo=findFieldInfo(q.getField(),q);
-            info.add(finfo.getEntityRelativeFieldNameWithContext());
+            info.add(q,finfo.getEntityRelativeFieldNameWithContext());
         }
         return info;
     }
@@ -88,7 +77,7 @@ public class GetQueryIndexInfo extends QueryIteratorSkeleton<IndexInfo> {
         String pattern=q.getRegex();
         if(pattern.length()>0 && pattern.charAt(0)=='^') {
             QueryFieldInfo finfo=findFieldInfo(q.getField(),q);
-            return new IndexInfo(finfo.getEntityRelativeFieldNameWithContext());
+            return new IndexInfo(q,finfo.getEntityRelativeFieldNameWithContext());
         } else {
             return new IndexInfo();
         }
@@ -98,7 +87,7 @@ public class GetQueryIndexInfo extends QueryIteratorSkeleton<IndexInfo> {
     protected IndexInfo itrNaryValueRelationalExpression(NaryValueRelationalExpression q, Path context) {
         if(q.getOp()==NaryRelationalOperator._in) {
             QueryFieldInfo finfo=findFieldInfo(q.getField(),q);
-            return new IndexInfo(finfo.getEntityRelativeFieldNameWithContext());
+            return new IndexInfo(q,finfo.getEntityRelativeFieldNameWithContext());
         } else
             return new IndexInfo();
     }
@@ -107,14 +96,15 @@ public class GetQueryIndexInfo extends QueryIteratorSkeleton<IndexInfo> {
     protected IndexInfo itrArrayContainsExpression(ArrayContainsExpression q, Path context) {
         if(q.getOp()==ContainsOperator._any) {
             QueryFieldInfo finfo=findFieldInfo(q.getArray(),q);
-            return new IndexInfo(finfo.getEntityRelativeFieldNameWithContext());
+            return new IndexInfo(q,finfo.getEntityRelativeFieldNameWithContext());
         } else
             return new IndexInfo();
     }
     
     @Override
     protected IndexInfo itrUnaryLogicalExpression(UnaryLogicalExpression q, Path context) {
-        return iterate(q.getQuery(),context);
+        // Negation makes index useless
+        return new IndexInfo();
     }
     
     @Override
@@ -137,7 +127,7 @@ public class GetQueryIndexInfo extends QueryIteratorSkeleton<IndexInfo> {
     @Override
     protected IndexInfo itrArrayMatchExpression(ArrayMatchExpression q, Path context) {
         QueryFieldInfo finfo=findFieldInfo(q.getArray(),q);
-        return new IndexInfo(finfo.getEntityRelativeFieldNameWithContext(),
+        return new IndexInfo(q,finfo.getEntityRelativeFieldNameWithContext(),
                              iterate(q.getElemMatch(), new Path(new Path(context, q.getArray()), Path.ANYPATH)));
     }
 }

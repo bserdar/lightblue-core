@@ -21,93 +21,133 @@ package com.redhat.lightblue.assoc.ep;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Arrays;
+import java.util.HashSet;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+
+import com.redhat.lightblue.assoc.QueryFieldInfo;
+import com.redhat.lightblue.assoc.BindQuery;
 
 import com.redhat.lightblue.metadata.DocId;
+import com.redhat.lightblue.metadata.EntityMetadata;
+import com.redhat.lightblue.metadata.Type;
+import com.redhat.lightblue.metadata.FieldTreeNode;
+import com.redhat.lightblue.metadata.ArrayField;
+
+import com.redhat.lightblue.query.QueryExpression;
 
 import com.redhat.lightblue.util.JsonDoc;
 import com.redhat.lightblue.util.Path;
+import com.redhat.lightblue.util.Tuples;
+import com.redhat.lightblue.util.KeyValueCursor;
 
 public class DocIndex {
     
-    private final HashMap<DocId,JsonDoc> index=new HashMap<>();
+    private final HashMap<DocId,List<JsonDoc>> index=new HashMap<>();
 
-    private static class SimpleField {
+    public static class SField {
         final Path field;
         final boolean array;
         final Type type;
+        final QueryExpression clause;
 
-        public SimpleField(Path field,EntityMetadata md) {
+        public SField(QueryExpression clause,Path field,EntityMetadata md) {
             this.field=field;
             this.array=this.field.nAnys()>0;
             this.type=md.resolve(field).getType();
+            this.clause=clause;
         }
 
-        public SimpleField(Path field,FieldTreeNode context) {
+        public SField(QueryExpression clause,Path field,FieldTreeNode context) {
             this.field=field;
             this.array=this.field.nAnys()>0;
             this.type=context.resolve(field).getType();
+            this.clause=clause;
+        }
+
+        @Override
+        public String toString() {
+            return field.toString();
         }
     }
 
-    private static class ArrayField {
+    public static class AField {
         final Path array;
-        final SimpleField[] fields;
+        final SField[] fields;
+        final QueryExpression clause;
 
-        ArrayField(IndexInfo.ArrayIndex ai,EntityMetadata md) {
+        AField(IndexInfo.ArrayIndex ai,EntityMetadata md) {
             this.array=ai.array;
+            this.clause=ai.clause;
             FieldTreeNode arrayNode=((ArrayField)md.resolve(ai.array)).getElement();
-            List<Path> fieldList=new ArrayList(ai.fields.size());
-            for(IndexInfo.FieldIndex fi:ai.fields)
+            List<SField> fieldList=new ArrayList<>(ai.indexes.size());
+            for(IndexInfo.FieldIndex fi:ai.indexes)
                 if(fi.field.nAnys()==0)
-                    fieldList.add(new SimpelField(fi.field,arrayNode));
-            this.fields=fieldList.toArray(new SimpleField[fieldList.size()]);
+                    fieldList.add(new SField(fi.clause,fi.field,arrayNode));
+            this.fields=fieldList.toArray(new SField[fieldList.size()]);
         }
 
+        @Override
+        public String toString() {
+            return array.toString()+"/"+Arrays.toString(fields);
+        }
     }
     
-    private final SimpleField[] simpleFields;
-    private final ArrayField[] arrayFields;
+    public final SField[] simpleFields;
+    public final AField[] arrayFields;
     private final int idSize;
+    public final IndexInfo indexInfo;
 
     /**
      * Separate out the simple and array fields from the index info
      * Arrays should not have nested arrays in them, we don't know
      * how to deal with those
      *
-     * We will create DocIds using object for simpleField:arrayField
+     * We will create DocIds using  simpleField:arrayField values
      */
     public DocIndex(IndexInfo indexInfo,EntityMetadata md) {
-        List<SimpleField> sf=new ArrayList<>();
-        List<ArrayField> af=new ArrayList<>();
+        this.indexInfo=indexInfo;
+        List<SField> sf=new ArrayList<>();
+        List<AField> af=new ArrayList<>();
         for(IndexInfo.TermIndex ix:indexInfo.getIndexes()) {
             if(ix instanceof IndexInfo.FieldIndex) {
-                sf.add( new SimpleField(((IndexInfo.FieldIndex)ix).field,md));
+                sf.add( new SField(((IndexInfo.FieldIndex)ix).clause,((IndexInfo.FieldIndex)ix).field,md));
             } else {
-                ArrayField arr=new ArrayField((IndexInfo.ArrayIndex)ix,md);
+                AField arr=new AField((IndexInfo.ArrayIndex)ix,md);
                 if(arr.fields.length>0)
                     af.add(arr);
             }
         }
-        this.simpleFields=sf.toArray(new Path[sf.size()]);
-        this.arrayFields=af.toArray(new ArrayField[af.size()]);
+        this.simpleFields=sf.toArray(new SField[sf.size()]);
+        this.arrayFields=af.toArray(new AField[af.size()]);
         int n=0;
-        for(ArrayField x:arrayFields)
+        for(AField x:arrayFields)
             n+=x.fields.length;
         idSize=n+simpleFields.length;
     }
 
     public void add(JsonDoc doc) {
         List<List<Object>> values=new ArrayList<>(idSize);
-        for(SimpleField f:simpleFields) {
-            if(f.array)
-                values.add(getValues(doc,f.type,f.field));
-            else {
+        for(SField f:simpleFields) {
+            if(f.array) {
+                KeyValueCursor<Path,JsonNode> cursor=doc.getAllNodes(f.field);
+                ArrayList l=new ArrayList();
+                while(cursor.hasNext()) {
+                    cursor.next();
+                    l.add(f.type.fromJson(cursor.getCurrentValue()));
+                }
+                values.add(l);
+            } else {
                 ArrayList l=new ArrayList(1);
                 l.add(f.type.fromJson(doc.get(f.field)));
                 values.add(l);
             }
         }
-        for(ArrayField a:arrayFields) {
+        for(AField a:arrayFields) {
             KeyValueCursor<Path,JsonNode> cursor=doc.getAllNodes(a.array);
             while(cursor.hasNext()) {
                 cursor.next();
@@ -140,7 +180,36 @@ public class DocIndex {
                     idvalues[i++]=x;
                 }
             }
-            index.put(new DocId(idvalues,-1),doc);
+            DocId docId=new DocId(idvalues,-1);
+            List<JsonDoc> list=index.get(docId);
+            if(list==null)
+                index.put(docId,list=new ArrayList<>(1));
+            list.add(doc);
         }
+    }
+
+    public Set<JsonDoc> getResults(QueryExpression query) {
+        Set<JsonDoc> results=new HashSet<>();
+        return results;
+    }
+
+    /**
+     * Returns the AField or the SField using the clause, or null if there is none
+     */
+    public Object getClauseItem(QueryExpression clause) {
+        for(AField x:arrayFields) {
+            if(x.clause==clause)
+                return x;
+        }
+        for(SField x:simpleFields) {
+            if(x.clause==clause)
+                return x;
+        }
+        return null;
+    }
+
+    @Override
+    public String toString() {
+        return index.toString();
     }
 }

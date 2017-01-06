@@ -66,6 +66,7 @@ public class BindQuery extends QueryIterator {
     protected QueryExpression itrValueComparisonExpression(ValueComparisonExpression q, Path context) {
         Binder binding = getBoundValue(q.getRvalue());
         if (binding != null) {
+            QueryExpression ret;
             if(binding.getValue() instanceof List) {
                 // If field = [v1,v2,v3], then rewrite the query as:
                 //     field in [v1,v2,v3]
@@ -76,17 +77,18 @@ public class BindQuery extends QueryIterator {
                 //           { field op v3 } ]
                 
                 if(q.getOp()==BinaryComparisonOperator._eq) {                    
-                    return new NaryValueRelationalExpression(q.getField(),NaryRelationalOperator._in,(List<Value>)binding.getValue());
+                    ret=new NaryValueRelationalExpression(q.getField(),NaryRelationalOperator._in,(List<Value>)binding.getValue());
                 } else {
                     List<QueryExpression> resultList=new ArrayList<>();
                     for(Value v:(List<Value>)binding.getValue()) {
                         resultList.add(new ValueComparisonExpression(q.getField(),q.getOp(),v));
                     }
-                    return new NaryLogicalExpression(NaryLogicalOperator._or,resultList);
+                    ret=new NaryLogicalExpression(NaryLogicalOperator._or,resultList);
                 }
             } else {
-                return new ValueComparisonExpression(q.getField(), q.getOp(), (Value) binding.getValue());
+                ret=new ValueComparisonExpression(q.getField(), q.getOp(), (Value) binding.getValue());
             }
+            return ret;
         } else {
             return q;
         }
@@ -95,7 +97,8 @@ public class BindQuery extends QueryIterator {
     protected QueryExpression itrNaryValueRelationalExpression(NaryValueRelationalExpression q, Path context) {
         Binder binding = getBoundValue(q.getValues());
         if (binding != null) {
-            return new NaryValueRelationalExpression(q.getField(), q.getOp(), (List<Value>) binding.getValue());
+            QueryExpression ret=new NaryValueRelationalExpression(q.getField(), q.getOp(), (List<Value>) binding.getValue());
+            return ret;
         } else {
             return q;
         }
@@ -104,7 +107,8 @@ public class BindQuery extends QueryIterator {
     protected QueryExpression itrArrayContainsExpression(ArrayContainsExpression q, Path context) {
         Binder binding = getBoundValue(q.getValues());
         if (binding != null) {
-            return new ArrayContainsExpression(q.getArray(), q.getOp(), (List<Value>) binding.getValue());
+            QueryExpression ret=new ArrayContainsExpression(q.getArray(), q.getOp(), (List<Value>) binding.getValue());
+            return ret;
         } else {
             return q;
         }
