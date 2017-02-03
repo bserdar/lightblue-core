@@ -22,7 +22,7 @@ public class MemoryStorageHandle implements StorageHandle {
     }
 
     public int size() {
-        return storage.size();
+        return storage==null?0:storage.size();
     }
     
     @Override
