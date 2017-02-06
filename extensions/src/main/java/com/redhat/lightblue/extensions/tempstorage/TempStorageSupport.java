@@ -13,10 +13,8 @@ public interface TempStorageSupport extends Extension {
     /**
      * Create a new handle to store temporary documents. 
      *
-     * @param idExtractor Optional ID extractor. Given a document, returns the document id
+     * @param md Metadata for the documents that will be stored in the storage
      *
-     * If idExtractor is not given, documents won't be accessible by
-     * their id, but they can still be streamed. 
      */
-    StorageHandle createTempStorage(DocIdExtractor idExtractor);
+    StorageHandle createTempStorage(EntityMetadata md);
 }
