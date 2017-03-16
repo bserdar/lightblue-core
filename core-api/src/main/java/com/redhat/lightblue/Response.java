@@ -38,6 +38,8 @@ public class Response extends JsonObject {
 
     private static final long serialVersionUID = 1L;
 
+    private static final String PROPERTY_ENTITY = "entity";
+    private static final String PROPERTY_VERSION = "entityVersion";
     private static final String PROPERTY_STATUS = "status";
     private static final String PROPERTY_MOD_COUNT = "modifiedCount";
     private static final String PROPERTY_MATCH_COUNT = "matchCount";
@@ -45,11 +47,14 @@ public class Response extends JsonObject {
     private static final String PROPERTY_DATA_ERRORS = "dataErrors";
     private static final String PROPERTY_ERRORS = "errors";
     private static final String PROPERTY_HOSTNAME = "hostname";
+    private static final String PROPERTY_RESULT_METADATA = "resultMetadata";
 
+    private EntityVersion entity;
     private OperationStatus status;
     private long modifiedCount;
     private long matchCount;
-    private transient JsonNode entityData;
+    private JsonNode entityData;
+    private List<ResultMetadata> resultMetadata;
     private String hostname;
     private final List<DataError> dataErrors = new ArrayList<>();
     private final List<Error> errors = new ArrayList<>();
@@ -82,6 +87,18 @@ public class Response extends JsonObject {
     public Response(JsonNodeFactory jsonNodeFactory) {
         this.jsonNodeFactory = jsonNodeFactory;
         this.hostname = HOSTNAME;
+    }
+
+    public EntityVersion getEntity() {
+        return entity;
+    }
+
+    public void setEntity(EntityVersion e) {
+        entity=e;
+    }
+
+    public void setEntity(String entityName,String version) {
+        this.entity=new EntityVersion(entityName,version);
     }
 
     /**
@@ -156,6 +173,18 @@ public class Response extends JsonObject {
     }
 
     /**
+     * Metadata list for documents in entityData. If there are more
+     * than one documents, the entitydata and metadata indexes match.
+     */
+    public List<ResultMetadata> getResultMetadata() {
+        return resultMetadata;
+    }
+
+    public void setResultMetadata(List<ResultMetadata> l) {
+        resultMetadata=l;
+    }
+
+    /**
      * Errors related to each document
      */
     public List<DataError> getDataErrors() {
@@ -167,22 +196,6 @@ public class Response extends JsonObject {
      */
     public List<Error> getErrors() {
         return errors;
-    }
-
-    /**
-     * Returns JSON representation of this
-     */
-    @Override
-    public JsonNode toJson() {
-        JsonNodeBuilder builder = new JsonNodeBuilder();
-        builder.add(PROPERTY_STATUS, status);
-        builder.add(PROPERTY_MOD_COUNT, modifiedCount);
-        builder.add(PROPERTY_MATCH_COUNT, matchCount);
-        builder.add(PROPERTY_PROCESSED, entityData);
-        builder.add(PROPERTY_HOSTNAME, HOSTNAME);
-        builder.addJsonObjectsList(PROPERTY_DATA_ERRORS, dataErrors);
-        builder.addErrorsList(PROPERTY_ERRORS, errors);
-        return builder.build();
     }
 
     public static Response fromJson(JsonNode node) {
@@ -201,28 +214,61 @@ public class Response extends JsonObject {
             x=node.get(PROPERTY_HOSTNAME);
             if(x!=null)
                 ret.hostname=x.asText();
-           ret.entityData=node.get(PROPERTY_PROCESSED);
-           ArrayNode a=(ArrayNode)node.get(PROPERTY_DATA_ERRORS);
-           if(a!=null) {
-               for(Iterator<JsonNode> itr=a.elements();itr.hasNext();) {
-                   x=itr.next();
-                   if(x instanceof ObjectNode)
-                       ret.dataErrors.add(DataError.fromJson((ObjectNode)x));
-               }
-           }
-           a=(ArrayNode)node.get(PROPERTY_ERRORS);
-           if(a!=null) {
-               for(Iterator<JsonNode> itr=a.elements();itr.hasNext();) {
-                   x=itr.next();
-                   if(x instanceof ObjectNode)
-                       ret.errors.add(Error.fromJson((ObjectNode)x));
-               }
-           }
-            
+            ret.entityData=node.get(PROPERTY_PROCESSED);
+            ArrayNode a=(ArrayNode)node.get(PROPERTY_DATA_ERRORS);
+            if(a!=null) {
+                for(Iterator<JsonNode> itr=a.elements();itr.hasNext();) {
+                    x=itr.next();
+                    if(x instanceof ObjectNode)
+                        ret.dataErrors.add(DataError.fromJson((ObjectNode)x));
+                }
+            }
+            a=(ArrayNode)node.get(PROPERTY_ERRORS);
+            if(a!=null) {
+                for(Iterator<JsonNode> itr=a.elements();itr.hasNext();) {
+                    x=itr.next();
+                    if(x instanceof ObjectNode)
+                        ret.errors.add(Error.fromJson((ObjectNode)x));
+                }
+            }
+            a=(ArrayNode)node.get(PROPERTY_RESULT_METADATA);
+            if(a!=null) {
+                ret.resultMetadata=new ArrayList<>();
+                for(Iterator<JsonNode> itr=a.elements();itr.hasNext();) {
+                    x=itr.next();
+                    if(x instanceof ObjectNode) {
+                        ret.resultMetadata.add(ResultMetadata.fromJson((ObjectNode)x));
+                    }
+                }
+            }
         }
         return ret;
     }
+    
+    /**
+     * Returns JSON representation of this
+     */
+    @Override
+    public JsonNode toJson() {
+        JsonNodeBuilder builder = new JsonNodeBuilder();
+        if(entity!=null) {
+            builder.add(PROPERTY_ENTITY,entity.getEntity());
+            builder.add(PROPERTY_VERSION,entity.getVersion());
+        }
+        builder.add(PROPERTY_STATUS, status);
+        builder.add(PROPERTY_MOD_COUNT, modifiedCount);
+        builder.add(PROPERTY_MATCH_COUNT, matchCount);
+        builder.add(PROPERTY_PROCESSED, entityData);
+        builder.add(PROPERTY_HOSTNAME, HOSTNAME);
+        builder.addJsonObjectsList(PROPERTY_DATA_ERRORS, dataErrors);
+        builder.addErrorsList(PROPERTY_ERRORS, errors);
+        if(resultMetadata!=null)
+            builder.addJsonObjectsList(PROPERTY_RESULT_METADATA,resultMetadata);
+        return builder.build();
+    }
 
+    // This class is not used
+    @Deprecated
     public static class ResponseBuilder {
 
         private OperationStatus status;

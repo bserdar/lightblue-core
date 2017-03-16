@@ -29,9 +29,11 @@ import java.util.HashSet;
 
 import com.redhat.lightblue.DataError;
 import com.redhat.lightblue.ExecutionOptions;
+import com.redhat.lightblue.ResultMetadata;
 import com.redhat.lightblue.hooks.HookManager;
 import com.redhat.lightblue.util.Error;
 import com.redhat.lightblue.util.JsonDoc;
+import com.redhat.lightblue.util.Measure;
 
 /**
  * An implementation of this class is passed into CRUD operation
@@ -53,6 +55,10 @@ public abstract class CRUDOperationContext implements MetadataResolver, Serializ
     private final HookManager hookManager;
     private final ExecutionOptions executionOptions;
     private boolean asynch=false;
+    private final Set<String> documentVersions=new HashSet<>();
+    private boolean updateIfCurrent;
+
+    public final Measure measure=new Measure();
 
     /**
      * This is the constructor used to represent the context of an operation
@@ -132,6 +138,27 @@ public abstract class CRUDOperationContext implements MetadataResolver, Serializ
     }
 
     /**
+     * If this list is non-empty, then update operations should be
+     * performed only if document versions are unchanged
+     */
+    public Set<String> getUpdateDocumentVersions() {
+        return documentVersions;
+    }
+
+    /**
+     * If true, then only update the documents in
+     * updateDocumentVersions set, and update them only if they are
+     * unchanged
+     */
+    public boolean isUpdateIfCurrent() {
+        return updateIfCurrent;
+    }
+
+    public void setUpdateIfCurrent(boolean b) {
+        updateIfCurrent=b;
+    }
+        
+    /**
      * Returns the execution options
      */
     public ExecutionOptions getExecutionOptions() {
@@ -192,11 +219,21 @@ public abstract class CRUDOperationContext implements MetadataResolver, Serializ
      *
      * @return Returns the new document
      */
+    @Deprecated
     public DocCtx addDocument(JsonDoc doc) {
+        return addDocument(doc,null);
+    }
+    
+    /**
+     * Adds a new document to the context with metadata
+     *
+     * @return Returns the new document
+     */
+    public DocCtx addDocument(JsonDoc doc,ResultMetadata rmd) {
         if (documents == null) {
             documents = new ArrayList<>();
         }
-        DocCtx x = new DocCtx(doc);
+        DocCtx x = new DocCtx(doc,rmd);
         documents.add(x);
         return x;
     }
@@ -252,6 +289,23 @@ public abstract class CRUDOperationContext implements MetadataResolver, Serializ
             for (DocCtx doc : documents) {
                 if (!doc.hasErrors() && doc.getOutputDocument() != null) {
                     list.add(doc.getOutputDocument());
+                }
+            }
+            return list;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Returns a list of output document metadata with no errors
+     */
+    public List<ResultMetadata> getOutputDocumentMetadataWithoutErrors() {
+        if (documents != null) {
+            List<ResultMetadata> list = new ArrayList<>(documents.size());
+            for (DocCtx doc : documents) {
+                if (!doc.hasErrors() && doc.getOutputDocument() != null) {
+                    list.add(doc.getResultMetadata());
                 }
             }
             return list;

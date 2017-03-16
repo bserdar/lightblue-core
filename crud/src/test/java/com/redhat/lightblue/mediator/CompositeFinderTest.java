@@ -19,14 +19,15 @@
 package com.redhat.lightblue.mediator;
 
 import java.util.List;
+
+import static org.junit.Assert.assertTrue;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.NullNode;
-
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -45,8 +46,8 @@ import com.redhat.lightblue.crud.FindRequest;
 import com.redhat.lightblue.crud.CRUDOperation;
 import com.redhat.lightblue.crud.CRUDOperationContext;
 import com.redhat.lightblue.crud.CRUDUpdateResponse;
+import com.redhat.lightblue.crud.CrudConstants;
 import com.redhat.lightblue.crud.CRUDFindResponse;
-import com.redhat.lightblue.crud.CRUDFindRequest;
 import com.redhat.lightblue.crud.UpdateRequest;
 import com.redhat.lightblue.crud.DeleteRequest;
 import com.redhat.lightblue.crud.CRUDDeleteResponse;
@@ -86,6 +87,7 @@ public class CompositeFinderTest extends AbstractJsonSchemaTest {
     private QueryExpression updateQuery;
 
     private class TestMetadata extends DatabaseMetadata {
+        @Override
         public EntityMetadata getEntityMetadata(String entityName, String version) {
             return getMd("composite/" + entityName + ".json");
         }
@@ -230,6 +232,30 @@ public class CompositeFinderTest extends AbstractJsonSchemaTest {
     }
 
     @Test
+    public void findSelfReference_Invalid() throws Exception{
+        FindRequest fr = new FindRequest();
+        fr.setQuery(query("{'field':'base_images.*._id','op':'=','rvalue':'1'}"));
+        fr.setEntityVersion(new EntityVersion("self_ref_err", "1.0.0"));
+        Response response = mediator.find(fr);
+        assertTrue(response.getErrors().get(0).getErrorCode().equals(CrudConstants.ERR_METADATA_APPEARS_TWICE));
+    }
+
+    @Test
+    public void findSelfReference() throws Exception{
+        FindRequest fr = new FindRequest();
+        fr.setQuery(query("{'field':'_id','op':'=','rvalue':'1'}"));
+        fr.setEntityVersion(new EntityVersion("self_ref", "1.0.0"));
+        Response response = mediator.find(fr);
+        assertTrue(response.getErrors().isEmpty());
+
+        fr = new FindRequest();
+        fr.setQuery(query("{'field':'_id','op':'=','rvalue':'1'}"));
+        fr.setEntityVersion(new EntityVersion("self_ref_default", "1.0.0"));
+        response = mediator.find(fr);
+        assertTrue(response.getErrors().isEmpty());
+    }
+
+    @Test
     public void retrieveAandBonly() throws Exception {
         FindRequest fr = new FindRequest();
         fr.setQuery(query("{'field':'_id','op':'=','rvalue':'A01'}"));
@@ -255,7 +281,7 @@ public class CompositeFinderTest extends AbstractJsonSchemaTest {
         Assert.assertEquals("ADEEP2", response.getEntityData().get(0).get("_id").asText());
     }
 
-    
+
     public void retrieveAandBonly_defaultVersion() throws Exception {
         FindRequest fr = new FindRequest();
         fr.setQuery(query("{'field':'_id','op':'=','rvalue':'A01'}"));
@@ -670,7 +696,7 @@ public class CompositeFinderTest extends AbstractJsonSchemaTest {
         Assert.assertEquals(1, response.getEntityData().size());
         Assert.assertEquals(1, response.getMatchCount());
     }
-    
+
    @Test
     public void rev_search_with_arraycond_matchcount_0range() throws Exception {
         FindRequest fr = new FindRequest();
@@ -683,7 +709,7 @@ public class CompositeFinderTest extends AbstractJsonSchemaTest {
         Assert.assertEquals(1, response.getMatchCount());
         Assert.assertEquals(0, response.getEntityData().size());
     }
-    
+
     @Test
     public void elem_match_forward() throws Exception {
         FindRequest fr = new FindRequest();
@@ -856,6 +882,50 @@ public class CompositeFinderTest extends AbstractJsonSchemaTest {
         System.out.println(response.getEntityData());
         Assert.assertEquals(1, response.getEntityData().size());
         Assert.assertEquals(1, response.getMatchCount());
+        Assert.assertEquals(1,response.getEntityData().get(0).get("obj1").get("c").size());
+        Assert.assertEquals(1,response.getEntityData().get(0).get("obj1").get("c").get(0).get("b").size());
+    }
+
+    @Test
+    public void two_level_search_three_level_fetch() throws Exception {
+        FindRequest fr=new FindRequest();
+        fr.setQuery(query("{'array':'obj1.c','elemMatch':{'field':'_id','op':'=','rvalue':'C50'}}"));
+        fr.setProjection(projection("[{'field':'*','recursive':1},{'field':'obj1.c.*.b'}]"));
+        fr.setEntityVersion(new EntityVersion("A","1.0.0"));
+        Response response=mediator.find(fr);
+        System.out.println(response.getEntityData());
+        Assert.assertEquals(1, response.getEntityData().size());
+        Assert.assertEquals(1, response.getMatchCount());
+        Assert.assertEquals(1,response.getEntityData().get(0).get("obj1").get("c").size());
+        Assert.assertEquals(1,response.getEntityData().get(0).get("obj1").get("c").get(0).get("b").size());
+    }
+
+    @Test
+    public void two_level_search_three_level_fetch_nested_projection() throws Exception {
+        FindRequest fr=new FindRequest();
+        fr.setQuery(query("{'array':'obj1.c','elemMatch':{'field':'_id','op':'=','rvalue':'C50'}}"));
+        fr.setProjection(projection("[{'field':'*','recursive':1},{'field':'obj1.c', 'match':{'field':'_id','op':'!=','rvalue':''},'projection':{'field':'b','match':{'field':'_id','op':'!=','rvalue':''},'projection':{'field':'field1'}}}]"));
+        fr.setEntityVersion(new EntityVersion("A","1.0.0"));
+        Response response=mediator.find(fr);
+        System.out.println(response.getEntityData());
+        Assert.assertEquals(1, response.getEntityData().size());
+        Assert.assertEquals(1, response.getMatchCount());
+        Assert.assertEquals(1,response.getEntityData().get(0).get("obj1").get("c").size());
+        Assert.assertEquals(1,response.getEntityData().get(0).get("obj1").get("c").get(0).get("b").size());
+        Assert.assertNotNull(response.getEntityData().get(0).get("obj1").get("c").get(0).get("b").get(0).get("field1"));
+    }
+
+    @Test
+    public void three_level_search2() throws Exception {
+        FindRequest fr=new FindRequest();
+        fr.setQuery(query("{'array':'obj1.c','elemMatch':{'$and':[{'field':'obj1.d.*.field1','regex':'lw'}]}}"));
+        fr.setProjection(projection("[{'field':'*','recursive':1}]"));
+        fr.setEntityVersion(new EntityVersion("A","1.0.0"));
+        Response response=mediator.find(fr);
+        System.out.println(response.getEntityData());
+        Assert.assertEquals(1, response.getEntityData().size());
+        Assert.assertEquals(1, response.getMatchCount());
+        Assert.assertTrue(response.getEntityData().get(0).get("obj1").get("c").get(0).get("obj1").get("d").get(0).get("field1").asText()!=null);
     }
 
     @Test
@@ -935,5 +1005,100 @@ public class CompositeFinderTest extends AbstractJsonSchemaTest {
         Response response=mediator.find(fr);
         System.out.println(response.getEntityData());
         Assert.assertEquals(3,response.getMatchCount());
+    }
+
+    @Test
+    public void looping_entities_with_or_query_709_w_n_to_n_refs_max() throws Exception {
+        FindRequest fr=new FindRequest();
+        fr.setQuery(query("{'$and':["+
+                          "           {'field':'repository','regex':'repo.*'},"+
+                          "           {'field':'images.*.repositories.*.published','op':'=','rvalue':true},"+
+                          "           {'$or':["+
+                          "                     {'$and':["+
+                          "                                {'field':'vendorLabel','op':'!=','rvalue':'Red Hat'},"+
+                          "                                {'field':'images.*.certified','op':'=','rvalue':true}"+
+                          "                             ]},"+
+                          "                     {'field':'vendorLabel','op':'=','rvalue':'Red Hat'}"+
+                          "                  ]}"+
+                          "]}"));
+        fr.setProjection(projection("[{'field':'*'},{'field':'refchild'}]"));
+        fr.setEntityVersion(new EntityVersion("containerRepository","1.0.0."));
+        fr.setFrom(0l);
+        fr.setTo(1l);
+        Response response=mediator.find(fr);
+        System.out.println(response.getEntityData());
+        Assert.assertEquals(3,response.getMatchCount());
+        Assert.assertEquals(2,response.getEntityData().size());
+    }
+
+    @Test
+    public void test_self_ref_array_contains() throws Exception {
+        FindRequest fr=new FindRequest();
+        fr.setQuery(query("{'field':'_id','op':'!=','rvalue':''}"));
+        fr.setProjection(projection("[{'field':'*','recursive':true},{'field':'test_reference'}]"));
+        fr.setEntityVersion(new EntityVersion("self_ref_array_contains","0.0.1-SNAPSHOT"));
+        Response response=mediator.find(fr);
+        System.out.println(response.getEntityData());
+        // Every doc should have all the others in reference
+        for(JsonNode doc:response.getEntityData()) {
+            String id=doc.get("_id").asText();
+            Assert.assertEquals(3,doc.get("test_reference").size());
+            for(Iterator<JsonNode> itr=doc.get("test_reference").elements();itr.hasNext();) {
+                JsonNode node=itr.next();
+                Assert.assertTrue(!id.equals(node.get("_id")));
+            }
+        }
+    }
+
+    @Test
+    public void test_self_ref_array_not_contains() throws Exception {
+        FindRequest fr=new FindRequest();
+        fr.setQuery(query("{'field':'_id','op':'!=','rvalue':''}"));
+        fr.setProjection(projection("[{'field':'*','recursive':true},{'field':'test_reference'}]"));
+        fr.setEntityVersion(new EntityVersion("self_ref_array_not_contains","0.0.1-SNAPSHOT"));
+        Response response=mediator.find(fr);
+        System.out.println(response.getEntityData());
+        for(JsonNode doc:response.getEntityData()) {
+            String id=doc.get("_id").asText();
+            if("Q".equals(id)) {
+                Assert.assertEquals(2,doc.get("test_reference").size());
+                Assert.assertTrue("ST".indexOf(doc.get("test_reference").get(0).get("_id").asText())!=-1);
+                Assert.assertTrue("ST".indexOf(doc.get("test_reference").get(1).get("_id").asText())!=-1);
+            } else if("R".equals(id)) {
+                Assert.assertEquals(2,doc.get("test_reference").size());
+                Assert.assertTrue("ST".indexOf(doc.get("test_reference").get(0).get("_id").asText())!=-1);
+                Assert.assertTrue("ST".indexOf(doc.get("test_reference").get(1).get("_id").asText())!=-1);
+            } else if("S".equals(id)) {
+                Assert.assertEquals(1,doc.get("test_reference").size());
+                Assert.assertEquals("T",doc.get("test_reference").get(0).get("_id").asText());
+            } else {
+                Assert.assertNull(doc.get("test_reference"));
+            }
+        }
+    }
+
+    @Test
+    public void test_self_ref_with_parents() throws Exception {
+        FindRequest fr=new FindRequest();
+        fr.setQuery(query("{'field':'_id','op':'=','rvalue':'img1'}"));
+        fr.setProjection(projection("[{'field':'*','recursive':true},{'field':'vulnerabilities.*.packages.*.fixed_by_images.*'}]"));
+        fr.setEntityVersion(new EntityVersion("containerImage-self","0.0.1"));
+        Response response=mediator.find(fr);
+        System.out.println(response.getEntityData());
+        Assert.assertEquals(1,response.getEntityData().size());
+        Assert.assertTrue(response.getEntityData().get(0).get("vulnerabilities").get(0).get("packages").get(0).get("fixed_by_images").size()==1);
+    }
+
+    @Test
+    public void limited_retrieval_with_queries_on_sub() throws Exception {
+        FindRequest fr=new FindRequest();
+        fr.setQuery(query("{'$and':[{'array':'repositories','elemMatch':{'field':'repositories.*._id','op':'>','rvalue':'1'}},"+
+                          "{'array':'repositories','elemMatch':{'field':'published','op':'=','rvalue':true}}]}"));        
+        fr.setProjection(projection("[{'field':'*','recursive':true},{'field':'repositories.*.repositories.*.vendors','recursive':true}]"));
+        fr.setEntityVersion(new EntityVersion("containerImage","1.0.0"));
+        fr.setTo(2l);
+        Response response=mediator.find(fr);
+        System.out.println(response.getEntityData());
+        Assert.assertEquals(3,response.getEntityData().size());
     }
 }

@@ -26,6 +26,7 @@ import java.util.Iterator;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import com.redhat.lightblue.util.JsonInitializable;
 
@@ -46,6 +47,7 @@ public class CrudConfiguration implements JsonInitializable, Serializable {
     public static final transient String FILENAME = "lightblue-crud.json";
 
     private ControllerConfiguration controllers[];
+    private SavedSearchConfiguration savedSearch;
     private boolean validateRequests = false;
     private int bulkParallelExecutions = 3;
     private AsynchronousExecutionConfiguration asynch;
@@ -74,6 +76,9 @@ public class CrudConfiguration implements JsonInitializable, Serializable {
         asynch=cfg;
     }
     
+    public SavedSearchConfiguration getSavedSearch() {
+        return savedSearch;
+    }
 
     /**
      * @return the controllers
@@ -133,6 +138,11 @@ public class CrudConfiguration implements JsonInitializable, Serializable {
             if(x!=null) {
                 asynch = new AsynchronousExecutionConfiguration();
                 asynch.initializeFromJson(x);
+            }
+            x = node.get("savedSearch");
+            if(x instanceof ObjectNode) {
+                savedSearch=new SavedSearchConfiguration();
+                savedSearch.initializeFromJson(x);
             }
         }
     }

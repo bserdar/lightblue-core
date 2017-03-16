@@ -48,6 +48,8 @@ import com.redhat.lightblue.util.JsonObject;
  */
 abstract class AbstractBulkJsonObject<T extends JsonObject> extends JsonObject {
 
+    protected boolean ordered = true;
+
     protected final List<T> entries = new ArrayList<>();
 
     /**
@@ -74,6 +76,14 @@ abstract class AbstractBulkJsonObject<T extends JsonObject> extends JsonObject {
 
     public void add(T x) {
         entries.add(x);
+    }
+
+    public boolean isOrdered() {
+        return ordered;
+    }
+
+    public void setOrdered(boolean ordered) {
+        this.ordered = ordered;
     }
 
 }

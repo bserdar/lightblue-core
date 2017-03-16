@@ -24,6 +24,8 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.Deque;
+import java.util.ArrayDeque;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,9 +33,12 @@ import org.slf4j.LoggerFactory;
 import com.redhat.lightblue.crud.MetadataResolver;
 import com.redhat.lightblue.crud.CrudConstants;
 
+import com.redhat.lightblue.EntityVersion;
+
 import com.redhat.lightblue.metadata.AbstractGetMetadata;
 import com.redhat.lightblue.metadata.EntityMetadata;
 import com.redhat.lightblue.metadata.MetadataStatus;
+import com.redhat.lightblue.metadata.ReferenceField;
 import com.redhat.lightblue.metadata.CompositeMetadata;
 import com.redhat.lightblue.metadata.Metadata;
 import com.redhat.lightblue.metadata.FieldTreeNode;
@@ -50,9 +55,26 @@ import com.redhat.lightblue.util.Path;
 import com.redhat.lightblue.util.Error;
 
 /**
- * This implementation combines the implementations for GetMetadata interface
- * used by CompositeMetadata, and MetadataResolver interface used by the CRUD
- * subsystem to access metadata by name.
+ * This implementation combines the implementations for GetMetadata
+ * interface used by CompositeMetadata, and MetadataResolver interface
+ * used by the CRUD subsystem to access metadata by name.
+ *
+ * The metadata tree may contain entities accessed using default
+ * versions. If the same entity appears with a definite version as
+ * well, that definite version will be used for default versions.
+ * 
+ * Algorithm:
+ *   Gmd.retrieveMetadata is called whenever new metadata is needed to evaluate 
+ * the query/projection. 
+ *   -If Gmd.retrieveMetadata is called with a definite version
+ *      If the same version is already loaded, return that
+ *      If another version is already loaded, throw exception
+ *      If it is not loaded, load it, cache it
+ *   -If Gmd.retrieveMetadata is called with a default version
+ *      If the same entity is already loaded with a definite version, return it
+ *      If the entity is not loaded, load it using its default version
+ *
+ *
  */
 public class DefaultMetadataResolver implements MetadataResolver, Serializable {
 
@@ -67,16 +89,38 @@ public class DefaultMetadataResolver implements MetadataResolver, Serializable {
     private Set<String> roles;
 
     private final class Gmd extends AbstractGetMetadata {
-        public Gmd(Projection projection,
-                   QueryExpression query) {
+        // the metadata version of the initial request
+        private final String requestVersion;
+        private final String requestEntityName;
+
+        public Gmd(Projection projection, QueryExpression query, String requestEntityName, String requestVersion) {
             super(projection, query);
+            this.requestVersion = requestVersion;
+            this.requestEntityName = requestEntityName;
         }
 
         @Override
-        protected EntityMetadata retrieveMetadata(Path injectionPath,
-                                                  String entityName,
-                                                  String entityVersion) {
-            return DefaultMetadataResolver.this.getMetadata(entityName, entityVersion);
+        protected EntityMetadata retrieveMetadata(Path injectionPath, String entityName, String entityVersion) {
+            EntityMetadata metadata=metadataMap.get(entityName);
+            if(metadata!=null) {
+                if(entityVersion!=null&&!entityVersion.equals(metadata.getVersion().getValue())) {
+                    throw Error.get(CrudConstants.ERR_METADATA_APPEARS_TWICE, entityName + ":" + entityVersion + " and " + metadata.getVersion().getValue());
+                } 
+            } else if(entityVersion!=null) {
+                metadata = md.getEntityMetadata(entityName, entityVersion);
+                if (metadata == null) {
+                    throw Error.get(CrudConstants.ERR_UNKNOWN_ENTITY, entityName + ":"+ entityVersion);
+                }
+                metadataMap.put(entityName,metadata);
+            } else {
+                // Metadata is requested with default version, and we haven't loaded it yet
+                metadata=md.getEntityMetadata(entityName,null);
+                if (metadata == null) {
+                    throw Error.get(CrudConstants.ERR_UNKNOWN_ENTITY, entityName + ":"+ entityVersion);
+                }
+                metadataMap.put(entityName,metadata);
+            }
+            return metadata;
         }
     }
 
@@ -88,20 +132,23 @@ public class DefaultMetadataResolver implements MetadataResolver, Serializable {
     }
 
     /**
-     * This method builds the composite metadata for the given top level entity
-     * name and entity version, for the given query and projections
+     * This method builds the composite metadata for the given top level entity name and entity version, for the given query and projections
      */
-    public void initialize(String entityName,
-                           String entityVersion,
-                           final QueryExpression query,
-                           final Projection projection) {
+    public void initialize(String entityName, String entityVersion, final QueryExpression query, final Projection projection) {
         if (cmd != null) {
             throw new IllegalStateException("Metadata resolver was already initialized");
         }
 
         LOGGER.debug("Initializing with {}:{}", entityName, entityVersion);
-        EntityMetadata emd = getMetadata(entityName, entityVersion);
-        cmd = CompositeMetadata.buildCompositeMetadata(emd, new Gmd(projection, query));
+        // first call to getMetadata will preload metadataMap
+        EntityMetadata emd = md.getEntityMetadata(entityName, entityVersion);
+        if (emd == null || emd.getEntitySchema() == null) {
+            throw Error.get(CrudConstants.ERR_UNKNOWN_ENTITY, entityName + ":" + entityVersion);
+        } else if (emd.getEntitySchema().getStatus() == MetadataStatus.DISABLED) {
+            throw Error.get(CrudConstants.ERR_DISABLED_METADATA, entityName + ":" + entityVersion);
+        }
+        metadataMap.put(entityName,emd);
+        cmd = CompositeMetadata.buildCompositeMetadata(emd, new Gmd(projection, query, entityName, entityVersion));
         LOGGER.debug("Composite metadata:{}", cmd);
 
         LOGGER.debug("Collecting metadata roles");
@@ -140,8 +187,7 @@ public class DefaultMetadataResolver implements MetadataResolver, Serializable {
     }
 
     /**
-     * Returns the version of the entity metadata relevant in the current
-     * operation
+     * Returns the version of the entity metadata relevant in the current operation
      */
     @Override
     public EntityMetadata getEntityMetadata(String entityName) {
@@ -178,27 +224,5 @@ public class DefaultMetadataResolver implements MetadataResolver, Serializable {
             a.getInsert().addRolesTo(roles);
             a.getUpdate().addRolesTo(roles);
         }
-    }
-
-    private EntityMetadata getMetadata(String entityName,
-                                       String version) {
-        EntityMetadata emd = metadataMap.get(entityName);
-        if (emd != null) {
-            if (!emd.getVersion().getValue().equals(version)) {
-                throw Error.get(CrudConstants.ERR_METADATA_APPEARS_TWICE, entityName + ":" + version
-                        + " and " + emd.getVersion().getValue());
-            }
-        } else {
-            LOGGER.debug("Retrieving entity metadata {}:{}", entityName, version);
-            emd = md.getEntityMetadata(entityName, version);
-            if (emd == null || emd.getEntitySchema() == null) {
-                throw Error.get(CrudConstants.ERR_UNKNOWN_ENTITY, entityName + ":" + version);
-            }
-            if (emd.getEntitySchema().getStatus() == MetadataStatus.DISABLED) {
-                throw Error.get(CrudConstants.ERR_DISABLED_METADATA, entityName + ":" + version);
-            }
-            metadataMap.put(entityName, emd);
-        }
-        return emd;
     }
 }
