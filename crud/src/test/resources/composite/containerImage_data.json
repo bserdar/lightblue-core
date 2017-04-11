@@ -7,6 +7,10 @@
     {"_id":"img6","objectType":"containerImage","certified":"true","repositories":[{"repository":"repo4","registry":"registry4","published":false}]},
     {"_id":"img7","objectType":"containerImage","certified":"true","repositories":[{"repository":"repo4","registry":"registry4","published":false}]},
     {"_id":"img8","objectType":"containerImage","certified":"false","repositories":[{"repository":"repo5","registry":"registry5","published":true}]},
-    {"_id":"img9","objectType":"containerImage","certified":"false","repositories":[{"repository":"repo5","registry":"registry5","published":true}]}
+    {"_id":"img9","objectType":"containerImage","certified":"false","repositories":[{"repository":"repo5","registry":"registry5","published":true}]},
+
+    {"_id":"img10","objectType":"containerImage","parsed_data":{"labels":[{"name":"build-date","value":"somedate"}]}},
+    {"_id":"img11","objectType":"containerImage","parsed_data":{"labels":[{"name":"build-date","value":"somedate"}]}},
+    {"_id":"img12","objectType":"containerImage","parsed_data":{"labels":[{"name":"build-date","value":"otherdate"}]}}
 
 ]

@@ -33,6 +33,46 @@
           "_id": {"type": "string", "constraints":{ "identity":1 } },
           "objectType": {"type": "string"},
           "certified":{"type":"boolean"},
+          "parsed_data":{
+              "type":"object",
+              "fields": {
+                  "labels":{                      
+                      "type":"array",
+                      "items": {
+                          "type":"object",
+                          "fields":{
+                              "name":{"type":"string"},
+                              "value":{"type":"string"}
+                          }
+                      }
+                  }
+              }
+          },
+          "base_images": {
+              "entity":"containerImage",
+              "version":"1.0.0",
+              "type":"reference",
+              "query":{
+                  "$and": [
+                      {"field":"_id","op":"$neq","rfield":"$parent._id"},
+                      {"array":"parsed_data.labels",
+                       "elemMatch":{
+                           "$and":[
+                               {"field":"name","op":"=","rvalue":"build-date"},
+                               {"array":"$parent.$parent.$parent.parsed_data.labels",
+                                "elemMatch":{
+                                    "$and":[
+                                        {"field":"name","op":"=","rfield":"$parent.$parent.$parent.$parent.name"},
+                                        {"field":"value","op":"=","rfield":"$parent.$parent.$parent.$parent.value"}
+                                    ]
+                                }
+                               }
+                           ]
+                       }
+                      }
+                  ]
+              }
+          },
           "repositories": {
               "type": "array",
               "items": {
